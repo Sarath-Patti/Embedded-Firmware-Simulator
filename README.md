@@ -1,8 +1,16 @@
 # Embedded Firmware Simulator
 
-Version: v0.1
+Version: v0.2
 
 A modular, scalable C++20 simulator architecture for embedded firmware.
+
+## Subsystems & Modules
+
+### Memory Subsystem (`efs::memory::Memory`)
+- **Contiguous Storage**: Encapsulated byte-addressable memory buffer configurable at initialization.
+- **Bounds Checking**: Strictly validates memory address boundaries on `read` and `write` operations.
+- **Error Reporting**: Logs out-of-bounds access via project logger utility and throws `std::out_of_range`.
+- **Reset Utility**: Provides a `clear()` method to zero-initialize the memory region.
 
 ## Project Structure
 
@@ -22,6 +30,13 @@ cmake ..
 cmake --build .
 ```
 
+## Running Tests
+
+```bash
+ctest --output-on-failure
+```
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+

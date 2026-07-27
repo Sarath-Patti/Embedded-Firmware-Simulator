@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 0.1.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Static library target for the simulator
 add_library(embedded_firmware_simulator STATIC
     src/common/logger.cpp
+    src/memory/memory.cpp
 )
 
 target_include_directories(embedded_firmware_simulator PUBLIC
@@ -32,3 +33,18 @@ if(MSVC)
 else()
     target_compile_options(simulator_demo PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# Testing Configuration
+enable_testing()
+
+add_executable(memory_tests tests/test_memory.cpp)
+target_link_libraries(memory_tests PRIVATE embedded_firmware_simulator)
+
+if(MSVC)
+    target_compile_options(memory_tests PRIVATE /W4)
+else()
+    target_compile_options(memory_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+add_test(NAME MemoryTests COMMAND memory_tests)
+
