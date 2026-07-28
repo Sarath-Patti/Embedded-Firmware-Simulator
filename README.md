@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator
 
-Version: v0.3
+Version: v0.4
 
 A modular, scalable C++20 simulator architecture for embedded firmware.
 
@@ -17,6 +17,12 @@ A modular, scalable C++20 simulator architecture for embedded firmware.
 - **MMIO Bus Dispatch**: Manages dynamic address-to-register mappings (`registerRegister`, `unregisterRegister`, `contains`).
 - **Access Safety**: Rejects duplicate address registrations and throws `std::out_of_range` on unmapped address access attempts.
 - **Decoupled Architecture**: Operates independently of specific peripheral implementations.
+
+### GPIO Peripheral (`efs::drivers::gpio::GPIO`)
+- **MMIO Register Mapping**: Integrates DIR (0x00), OUT (0x04), and IN (0x08) registers into the MMIO Bus.
+- **Pin Operations**: Supports `configurePin`, `writePin`, `readPin`, and `togglePin` for 32 pins.
+- **Safety & Validation**: Enforces pin index validation and verifies direction prior to write/toggle operations.
+- **State Reflection**: Bi-directionally synchronizes pin state mutations with MMIO register values.
 
 ## Project Structure
 

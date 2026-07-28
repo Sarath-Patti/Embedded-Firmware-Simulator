@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 0.3.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 0.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,6 +11,7 @@ add_library(embedded_firmware_simulator STATIC
     src/memory/memory.cpp
     src/mmio/register.cpp
     src/mmio/mmio_bus.cpp
+    src/drivers/gpio/gpio.cpp
 )
 
 target_include_directories(embedded_firmware_simulator PUBLIC
@@ -60,4 +61,15 @@ else()
 endif()
 
 add_test(NAME MMIOTests COMMAND mmio_tests)
+
+add_executable(gpio_tests tests/test_gpio.cpp)
+target_link_libraries(gpio_tests PRIVATE embedded_firmware_simulator)
+
+if(MSVC)
+    target_compile_options(gpio_tests PRIVATE /W4)
+else()
+    target_compile_options(gpio_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+add_test(NAME GPIOTests COMMAND gpio_tests)
 

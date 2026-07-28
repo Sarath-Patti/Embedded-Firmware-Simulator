@@ -7,10 +7,10 @@
 namespace efs::common {
 
 constexpr std::uint32_t VERSION_MAJOR = 0;
-constexpr std::uint32_t VERSION_MINOR = 3;
+constexpr std::uint32_t VERSION_MINOR = 4;
 constexpr std::uint32_t VERSION_PATCH = 0;
 
-constexpr std::string_view VERSION_STRING = "v0.3.0";
+constexpr std::string_view VERSION_STRING = "v0.4.0";
 constexpr std::string_view PROJECT_NAME = "Embedded Firmware Simulator";
 
 } // namespace efs::common
