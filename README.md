@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator
 
-Version: v0.4
+Version: v0.5
 
 A modular, scalable C++20 simulator architecture for embedded firmware.
 
@@ -23,6 +23,12 @@ A modular, scalable C++20 simulator architecture for embedded firmware.
 - **Pin Operations**: Supports `configurePin`, `writePin`, `readPin`, and `togglePin` for 32 pins.
 - **Safety & Validation**: Enforces pin index validation and verifies direction prior to write/toggle operations.
 - **State Reflection**: Bi-directionally synchronizes pin state mutations with MMIO register values.
+
+### Timer Peripheral (`efs::drivers::timer::Timer`)
+- **MMIO Register Mapping**: Integrates CTRL (0x00), COUNT (0x04), COMPARE (0x08), and STATUS (0x0C) registers into the MMIO Bus.
+- **Timer Operations**: Supports `start()`, `stop()`, `reset()`, `tick()`, `setCompare(value)`, `counter()`, and `running()`.
+- **Compare Matching**: Increments counter while enabled; sets STATUS match flag and automatically halts execution upon reaching the target compare value.
+- **Synchronized State**: Seamlessly reflects state transitions between direct C++ API methods and MMIO register operations.
 
 ## Project Structure
 
