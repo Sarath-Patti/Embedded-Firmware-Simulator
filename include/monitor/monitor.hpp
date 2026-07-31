@@ -13,6 +13,7 @@
 
 namespace efs::monitor {
 
+/// Non-destructive interactive monitor CLI providing system inspection and debugging.
 class Monitor {
 public:
     Monitor(cpu::CPU* cpu = nullptr,
@@ -28,20 +29,31 @@ public:
     Monitor(Monitor&&) = delete;
     Monitor& operator=(Monitor&&) = delete;
 
+    /// Attaches or updates the CPU reference.
     void setCPU(cpu::CPU* cpu) noexcept;
+
+    /// Attaches or updates the Memory reference.
     void setMemory(memory::Memory* memory) noexcept;
+
+    /// Attaches or updates the MMIOBus reference.
     void setMMIOBus(mmio::MMIOBus* mmioBus) noexcept;
+
+    /// Attaches or updates the GPIO peripheral reference.
     void setGPIO(drivers::gpio::GPIO* gpio) noexcept;
+
+    /// Attaches or updates the Timer peripheral reference.
     void setTimer(drivers::timer::Timer* timer) noexcept;
+
+    /// Attaches or updates the InterruptController reference.
     void setInterruptController(kernel::InterruptController* interruptController) noexcept;
 
-    // Executes a single command string non-blockingly. Returns false if 'exit' command is issued.
+    /// Executes a single command string non-blockingly. Returns false if 'exit'/'quit' command is issued.
     bool executeCommand(std::string_view commandLine, std::ostream& output = std::cout);
 
-    // Non-blocking command processor. Alias for executeCommand.
+    /// Non-blocking command processor. Alias for executeCommand.
     bool processCommand(std::string_view commandLine, std::ostream& output = std::cout);
 
-    // Interactive monitor session loop forwarding lines from input stream to executeCommand.
+    /// Interactive monitor session loop forwarding lines from input stream to executeCommand.
     void runInteractiveSession(std::istream& input = std::cin, std::ostream& output = std::cout);
 
 private:

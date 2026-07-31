@@ -25,132 +25,47 @@ target_include_directories(embedded_firmware_simulator PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-# Compiler Warnings
 if(MSVC)
     target_compile_options(embedded_firmware_simulator PRIVATE /W4)
 else()
     target_compile_options(embedded_firmware_simulator PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-# Demo executable target
+# Executable targets
 add_executable(simulator_demo src/main.cpp)
 target_link_libraries(simulator_demo PRIVATE embedded_firmware_simulator)
 
-if(MSVC)
-    target_compile_options(simulator_demo PRIVATE /W4)
-else()
-    target_compile_options(simulator_demo PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-# Firmware demo executable target
 add_executable(firmware_demo examples/firmware_demo.cpp)
 target_link_libraries(firmware_demo PRIVATE embedded_firmware_simulator)
 
 if(MSVC)
+    target_compile_options(simulator_demo PRIVATE /W4)
     target_compile_options(firmware_demo PRIVATE /W4)
 else()
+    target_compile_options(simulator_demo PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(firmware_demo PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 # Testing Configuration
 enable_testing()
 
-add_executable(memory_tests tests/test_memory.cpp)
-target_link_libraries(memory_tests PRIVATE embedded_firmware_simulator)
+function(efs_add_test TARGET_NAME SOURCE_FILE TEST_NAME)
+    add_executable(${TARGET_NAME} ${SOURCE_FILE})
+    target_link_libraries(${TARGET_NAME} PRIVATE embedded_firmware_simulator)
+    if(MSVC)
+        target_compile_options(${TARGET_NAME} PRIVATE /W4)
+    else()
+        target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME ${TEST_NAME} COMMAND ${TARGET_NAME})
+endfunction()
 
-if(MSVC)
-    target_compile_options(memory_tests PRIVATE /W4)
-else()
-    target_compile_options(memory_tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-add_test(NAME MemoryTests COMMAND memory_tests)
-
-add_executable(mmio_tests tests/test_mmio.cpp)
-target_link_libraries(mmio_tests PRIVATE embedded_firmware_simulator)
-
-if(MSVC)
-    target_compile_options(mmio_tests PRIVATE /W4)
-else()
-    target_compile_options(mmio_tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-add_test(NAME MMIOTests COMMAND mmio_tests)
-
-add_executable(gpio_tests tests/test_gpio.cpp)
-target_link_libraries(gpio_tests PRIVATE embedded_firmware_simulator)
-
-if(MSVC)
-    target_compile_options(gpio_tests PRIVATE /W4)
-else()
-    target_compile_options(gpio_tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-add_test(NAME GPIOTests COMMAND gpio_tests)
-
-add_executable(timer_tests tests/test_timer.cpp)
-target_link_libraries(timer_tests PRIVATE embedded_firmware_simulator)
-
-if(MSVC)
-    target_compile_options(timer_tests PRIVATE /W4)
-else()
-    target_compile_options(timer_tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-add_test(NAME TimerTests COMMAND timer_tests)
-
-add_executable(interrupt_tests tests/test_interrupt_controller.cpp)
-target_link_libraries(interrupt_tests PRIVATE embedded_firmware_simulator)
-
-if(MSVC)
-    target_compile_options(interrupt_tests PRIVATE /W4)
-else()
-    target_compile_options(interrupt_tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-add_test(NAME InterruptTests COMMAND interrupt_tests)
-
-add_executable(cpu_tests tests/test_cpu.cpp)
-target_link_libraries(cpu_tests PRIVATE embedded_firmware_simulator)
-
-if(MSVC)
-    target_compile_options(cpu_tests PRIVATE /W4)
-else()
-    target_compile_options(cpu_tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-add_test(NAME CPUTests COMMAND cpu_tests)
-
-add_executable(firmware_tests tests/test_firmware.cpp)
-target_link_libraries(firmware_tests PRIVATE embedded_firmware_simulator)
-
-if(MSVC)
-    target_compile_options(firmware_tests PRIVATE /W4)
-else()
-    target_compile_options(firmware_tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-add_test(NAME FirmwareTests COMMAND firmware_tests)
-
-add_executable(register_tests tests/test_register_file.cpp)
-target_link_libraries(register_tests PRIVATE embedded_firmware_simulator)
-
-if(MSVC)
-    target_compile_options(register_tests PRIVATE /W4)
-else()
-    target_compile_options(register_tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-add_test(NAME RegisterTests COMMAND register_tests)
-
-add_executable(monitor_tests tests/test_monitor.cpp)
-target_link_libraries(monitor_tests PRIVATE embedded_firmware_simulator)
-
-if(MSVC)
-    target_compile_options(monitor_tests PRIVATE /W4)
-else()
-    target_compile_options(monitor_tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-add_test(NAME MonitorTests COMMAND monitor_tests)
-
+efs_add_test(memory_tests tests/test_memory.cpp MemoryTests)
+efs_add_test(mmio_tests tests/test_mmio.cpp MMIOTests)
+efs_add_test(gpio_tests tests/test_gpio.cpp GPIOTests)
+efs_add_test(timer_tests tests/test_timer.cpp TimerTests)
+efs_add_test(interrupt_tests tests/test_interrupt_controller.cpp InterruptTests)
+efs_add_test(cpu_tests tests/test_cpu.cpp CPUTests)
+efs_add_test(firmware_tests tests/test_firmware.cpp FirmwareTests)
+efs_add_test(register_tests tests/test_register_file.cpp RegisterTests)
+efs_add_test(monitor_tests tests/test_monitor.cpp MonitorTests)
