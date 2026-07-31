@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator
 
-Version: v0.6
+Version: v0.7
 
 A modular, scalable C++20 simulator architecture for embedded firmware.
 
@@ -35,6 +35,12 @@ A modular, scalable C++20 simulator architecture for embedded firmware.
 - **Interrupt Lifecycle**: Supports registration (`registerInterrupt`), enabling/disabling (`enable`/`disable`), manual and hardware triggering (`trigger`), and status query (`pending`/`enabled`).
 - **Priority Dispatch**: Evaluates pending enabled interrupts and dispatches the highest-priority handler callback (`dispatch()`), clearing the pending flag upon invocation.
 - **Peripheral Integration**: Connects with peripherals like `Timer` to automatically trigger interrupts on hardware events (e.g. COMPARE match).
+
+### CPU Execution Engine (`efs::cpu::CPU`)
+- **Simulation Cycle Engine**: Coordinates cycle-based simulation execution (`start`, `stop`, `reset`, `step`, `run`).
+- **Peripheral Coordination**: Drives attached timers via `Timer.tick()` during each simulation step.
+- **Interrupt Orchestration**: Triggers `InterruptController.dispatch()` per cycle to execute ISR callbacks.
+- **Cycle Tracking**: Maintains 64-bit cycle count (`cycleCount()`) and manages execution state (`running()`).
 
 ## Project Structure
 
