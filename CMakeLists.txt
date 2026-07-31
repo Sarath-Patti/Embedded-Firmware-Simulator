@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 0.7.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 0.8.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,6 +15,7 @@ add_library(embedded_firmware_simulator STATIC
     src/drivers/timer/timer.cpp
     src/kernel/interrupt_controller.cpp
     src/cpu/cpu.cpp
+    src/firmware/basic_firmware.cpp
 )
 
 target_include_directories(embedded_firmware_simulator PUBLIC
@@ -31,13 +32,22 @@ endif()
 
 # Demo executable target
 add_executable(simulator_demo src/main.cpp)
-
 target_link_libraries(simulator_demo PRIVATE embedded_firmware_simulator)
 
 if(MSVC)
     target_compile_options(simulator_demo PRIVATE /W4)
 else()
     target_compile_options(simulator_demo PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+# Firmware demo executable target
+add_executable(firmware_demo examples/firmware_demo.cpp)
+target_link_libraries(firmware_demo PRIVATE embedded_firmware_simulator)
+
+if(MSVC)
+    target_compile_options(firmware_demo PRIVATE /W4)
+else()
+    target_compile_options(firmware_demo PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 # Testing Configuration
@@ -108,4 +118,15 @@ else()
 endif()
 
 add_test(NAME CPUTests COMMAND cpu_tests)
+
+add_executable(firmware_tests tests/test_firmware.cpp)
+target_link_libraries(firmware_tests PRIVATE embedded_firmware_simulator)
+
+if(MSVC)
+    target_compile_options(firmware_tests PRIVATE /W4)
+else()
+    target_compile_options(firmware_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+add_test(NAME FirmwareTests COMMAND firmware_tests)
 

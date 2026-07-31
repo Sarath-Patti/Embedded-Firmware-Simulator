@@ -4,6 +4,8 @@
 #include "common/types.hpp"
 #include "drivers/timer/timer.hpp"
 #include "kernel/interrupt_controller.hpp"
+#include "firmware/firmware.hpp"
+#include <memory>
 #include <vector>
 
 namespace efs::cpu {
@@ -24,6 +26,11 @@ public:
     void step();
     void run(common::QWord cycles);
 
+    bool loadFirmware(std::shared_ptr<firmware::Firmware> firmware);
+    void unloadFirmware();
+    [[nodiscard]] bool firmwareLoaded() const noexcept;
+    [[nodiscard]] std::shared_ptr<firmware::Firmware> firmware() const noexcept;
+
     bool attachTimer(drivers::timer::Timer* timer);
     bool detachTimer(drivers::timer::Timer* timer);
 
@@ -36,6 +43,7 @@ public:
 private:
     common::QWord m_cycleCount{0};
     bool m_running{false};
+    std::shared_ptr<firmware::Firmware> m_firmware{nullptr};
     kernel::InterruptController* m_interruptController{nullptr};
     std::vector<drivers::timer::Timer*> m_timers;
 };

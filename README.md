@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator
 
-Version: v0.7
+Version: v0.8
 
 A modular, scalable C++20 simulator architecture for embedded firmware.
 
@@ -41,6 +41,11 @@ A modular, scalable C++20 simulator architecture for embedded firmware.
 - **Peripheral Coordination**: Drives attached timers via `Timer.tick()` during each simulation step.
 - **Interrupt Orchestration**: Triggers `InterruptController.dispatch()` per cycle to execute ISR callbacks.
 - **Cycle Tracking**: Maintains 64-bit cycle count (`cycleCount()`) and manages execution state (`running()`).
+
+### Firmware Execution Layer (`efs::firmware::Firmware`, `efs::firmware::BasicFirmware`)
+- **Firmware Interface**: Abstract lifecycle interface exposing `initialize()`, `execute()`, and `shutdown()`.
+- **CPU Integration**: CPU manages firmware lifecycle through `loadFirmware()`, `unloadFirmware()`, and `firmwareLoaded()`. Safely handles absence of loaded firmware.
+- **BasicFirmware Implementation**: Example firmware driving GPIO pin toggling at configurable cycle intervals during CPU simulation steps.
 
 ## Project Structure
 

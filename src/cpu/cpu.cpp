@@ -9,11 +9,21 @@ CPU::CPU(kernel::InterruptController* interruptController)
 }
 
 void CPU::start() {
-    m_running = true;
+    if (!m_running) {
+        m_running = true;
+        if (m_firmware != nullptr) {
+            m_firmware->initialize();
+        }
+    }
 }
 
 void CPU::stop() {
-    m_running = false;
+    if (m_running) {
+        m_running = false;
+        if (m_firmware != nullptr) {
+            m_firmware->shutdown();
+        }
+    }
 }
 
 void CPU::reset() {
@@ -22,6 +32,10 @@ void CPU::reset() {
 
 void CPU::step() {
     m_cycleCount++;
+
+    if (m_firmware != nullptr && m_running) {
+        m_firmware->execute();
+    }
 
     for (auto* timer : m_timers) {
         if (timer != nullptr) {
@@ -39,6 +53,33 @@ void CPU::run(common::QWord cycles) {
     for (common::QWord i = 0; i < cycles && m_running; ++i) {
         step();
     }
+}
+
+bool CPU::loadFirmware(std::shared_ptr<firmware::Firmware> firmware) {
+    if (!firmware) {
+        common::Logger::warning("Attempted to load null firmware into CPU");
+        return false;
+    }
+    if (m_running) {
+        stop();
+    }
+    m_firmware = std::move(firmware);
+    return true;
+}
+
+void CPU::unloadFirmware() {
+    if (m_running) {
+        stop();
+    }
+    m_firmware = nullptr;
+}
+
+bool CPU::firmwareLoaded() const noexcept {
+    return m_firmware != nullptr;
+}
+
+std::shared_ptr<firmware::Firmware> CPU::firmware() const noexcept {
+    return m_firmware;
 }
 
 bool CPU::attachTimer(drivers::timer::Timer* timer) {
