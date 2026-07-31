@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 0.5.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 0.6.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +13,7 @@ add_library(embedded_firmware_simulator STATIC
     src/mmio/mmio_bus.cpp
     src/drivers/gpio/gpio.cpp
     src/drivers/timer/timer.cpp
+    src/kernel/interrupt_controller.cpp
 )
 
 target_include_directories(embedded_firmware_simulator PUBLIC
@@ -84,4 +85,15 @@ else()
 endif()
 
 add_test(NAME TimerTests COMMAND timer_tests)
+
+add_executable(interrupt_tests tests/test_interrupt_controller.cpp)
+target_link_libraries(interrupt_tests PRIVATE embedded_firmware_simulator)
+
+if(MSVC)
+    target_compile_options(interrupt_tests PRIVATE /W4)
+else()
+    target_compile_options(interrupt_tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+add_test(NAME InterruptTests COMMAND interrupt_tests)
 

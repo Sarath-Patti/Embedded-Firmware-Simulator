@@ -1,4 +1,5 @@
 #include "drivers/timer/timer.hpp"
+#include "kernel/interrupt_controller.hpp"
 #include "common/logger.hpp"
 #include <stdexcept>
 #include <string>
@@ -45,6 +46,16 @@ void Timer::reset() {
     m_statusRegister->write(0);
 }
 
+void Timer::attachInterruptController(kernel::InterruptController* controller, std::uint8_t interruptId) {
+    m_interruptController = controller;
+    m_interruptId = interruptId;
+}
+
+void Timer::detachInterruptController() noexcept {
+    m_interruptController = nullptr;
+    m_interruptId = 0;
+}
+
 void Timer::tick() {
     if (!running()) {
         return;
@@ -61,6 +72,9 @@ void Timer::tick() {
         status |= STATUS_MATCH_BIT;
         m_statusRegister->write(status);
         stop();
+        if (m_interruptController != nullptr) {
+            m_interruptController->trigger(m_interruptId);
+        }
     }
 }
 

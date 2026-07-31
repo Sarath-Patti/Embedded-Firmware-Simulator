@@ -6,6 +6,10 @@
 #include "mmio/register.hpp"
 #include <memory>
 
+namespace efs::kernel {
+class InterruptController;
+}
+
 namespace efs::drivers::timer {
 
 class Timer {
@@ -31,6 +35,9 @@ public:
     void reset();
     void tick();
 
+    void attachInterruptController(kernel::InterruptController* controller, std::uint8_t interruptId);
+    void detachInterruptController() noexcept;
+
     void setCompare(common::DWord value);
     [[nodiscard]] common::DWord compare() const noexcept;
     [[nodiscard]] common::DWord counter() const noexcept;
@@ -51,6 +58,9 @@ private:
     std::shared_ptr<mmio::Register> m_countRegister;
     std::shared_ptr<mmio::Register> m_compareRegister;
     std::shared_ptr<mmio::Register> m_statusRegister;
+
+    kernel::InterruptController* m_interruptController{nullptr};
+    std::uint8_t m_interruptId{0};
 };
 
 } // namespace efs::drivers::timer

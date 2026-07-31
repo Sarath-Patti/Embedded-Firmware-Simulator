@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator
 
-Version: v0.5
+Version: v0.6
 
 A modular, scalable C++20 simulator architecture for embedded firmware.
 
@@ -29,6 +29,12 @@ A modular, scalable C++20 simulator architecture for embedded firmware.
 - **Timer Operations**: Supports `start()`, `stop()`, `reset()`, `tick()`, `setCompare(value)`, `counter()`, and `running()`.
 - **Compare Matching**: Increments counter while enabled; sets STATUS match flag and automatically halts execution upon reaching the target compare value.
 - **Synchronized State**: Seamlessly reflects state transitions between direct C++ API methods and MMIO register operations.
+
+### Interrupt Controller (`efs::kernel::InterruptController`)
+- **MMIO Register Interface**: Exposes ENABLE (0x00), PENDING (0x04), and PRIORITY (0x08) registers via MMIO Bus.
+- **Interrupt Lifecycle**: Supports registration (`registerInterrupt`), enabling/disabling (`enable`/`disable`), manual and hardware triggering (`trigger`), and status query (`pending`/`enabled`).
+- **Priority Dispatch**: Evaluates pending enabled interrupts and dispatches the highest-priority handler callback (`dispatch()`), clearing the pending flag upon invocation.
+- **Peripheral Integration**: Connects with peripherals like `Timer` to automatically trigger interrupts on hardware events (e.g. COMPARE match).
 
 ## Project Structure
 
