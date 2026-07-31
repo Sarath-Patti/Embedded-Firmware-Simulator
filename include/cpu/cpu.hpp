@@ -5,6 +5,7 @@
 #include "drivers/timer/timer.hpp"
 #include "kernel/interrupt_controller.hpp"
 #include "firmware/firmware.hpp"
+#include "cpu/registers/register_file.hpp"
 #include <memory>
 #include <vector>
 
@@ -37,12 +38,16 @@ public:
     void setInterruptController(kernel::InterruptController* controller);
     [[nodiscard]] kernel::InterruptController* interruptController() const noexcept;
 
+    [[nodiscard]] const registers::RegisterFile& registerFile() const noexcept;
+    [[nodiscard]] registers::RegisterFile& registerFile() noexcept;
+
     [[nodiscard]] common::QWord cycleCount() const noexcept;
     [[nodiscard]] bool running() const noexcept;
 
 private:
     common::QWord m_cycleCount{0};
     bool m_running{false};
+    registers::RegisterFile m_registerFile;
     std::shared_ptr<firmware::Firmware> m_firmware{nullptr};
     kernel::InterruptController* m_interruptController{nullptr};
     std::vector<drivers::timer::Timer*> m_timers;

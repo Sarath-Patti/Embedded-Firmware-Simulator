@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator
 
-Version: v0.8
+Version: v0.9
 
 A modular, scalable C++20 simulator architecture for embedded firmware.
 
@@ -46,6 +46,12 @@ A modular, scalable C++20 simulator architecture for embedded firmware.
 - **Firmware Interface**: Abstract lifecycle interface exposing `initialize()`, `execute()`, and `shutdown()`.
 - **CPU Integration**: CPU manages firmware lifecycle through `loadFirmware()`, `unloadFirmware()`, and `firmwareLoaded()`. Safely handles absence of loaded firmware.
 - **BasicFirmware Implementation**: Example firmware driving GPIO pin toggling at configurable cycle intervals during CPU simulation steps.
+
+### CPU Register File (`efs::cpu::registers::RegisterFile`)
+- **Processor State Abstraction**: Encapsulates 16 General Purpose Registers (R0–R15), Program Counter (PC), Stack Pointer (SP), and Status Register (SR).
+- **Access Safety & Validation**: Validates GPR register indices (`readRegister`, `writeRegister`), throwing `std::out_of_range` on invalid indices.
+- **Special Registers**: Direct accessors for PC (`readPC`/`writePC`), SP (`readSP`/`writeSP`), and Status (`readStatus`/`writeStatus`).
+- **CPU Ownership**: Directly owned and managed by `CPU`, resetting alongside simulator cycle reset (`CPU::reset()`).
 
 ## Project Structure
 

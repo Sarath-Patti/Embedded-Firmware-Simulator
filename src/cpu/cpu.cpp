@@ -28,6 +28,15 @@ void CPU::stop() {
 
 void CPU::reset() {
     m_cycleCount = 0;
+    m_registerFile.reset();
+}
+
+const registers::RegisterFile& CPU::registerFile() const noexcept {
+    return m_registerFile;
+}
+
+registers::RegisterFile& CPU::registerFile() noexcept {
+    return m_registerFile;
 }
 
 void CPU::step() {
