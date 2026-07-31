@@ -5,6 +5,7 @@
 #include "mmio/register.hpp"
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 namespace efs::mmio {
 
@@ -25,6 +26,8 @@ public:
     [[nodiscard]] bool contains(common::Address address) const noexcept;
     [[nodiscard]] common::DWord read(common::Address address) const;
     void write(common::Address address, common::DWord value);
+
+    [[nodiscard]] std::vector<common::Address> registeredAddresses() const;
 
 private:
     std::unordered_map<common::Address, std::shared_ptr<Register>> m_registers;

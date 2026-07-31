@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator
 
-Version: v0.9
+Version: v1.0
 
 A modular, scalable C++20 simulator architecture for embedded firmware.
 
@@ -52,6 +52,56 @@ A modular, scalable C++20 simulator architecture for embedded firmware.
 - **Access Safety & Validation**: Validates GPR register indices (`readRegister`, `writeRegister`), throwing `std::out_of_range` on invalid indices.
 - **Special Registers**: Direct accessors for PC (`readPC`/`writePC`), SP (`readSP`/`writeSP`), and Status (`readStatus`/`writeStatus`).
 - **CPU Ownership**: Directly owned and managed by `CPU`, resetting alongside simulator cycle reset (`CPU::reset()`).
+
+### Interactive Monitor (`efs::monitor::Monitor`)
+- **Interactive Command CLI**: Command-line monitor interface enabling interactive inspection and control of simulator subsystems.
+- **Non-Destructive Observation**: Inspects CPU, RegisterFile, Memory, MMIO Bus, GPIO, Timer, and Interrupt Controller without modifying architecture contracts.
+- **Robust Command Processing**: Sanitizes input and validates numeric arguments to prevent runtime crashes from malformed commands.
+
+## Supported Monitor Commands
+
+| Command | Description |
+| :--- | :--- |
+| `help` | Display all supported commands. |
+| `exit` | Exit the interactive monitor. |
+| `reset` | Reset the CPU simulation cycle counter and register file. |
+| `step` | Execute exactly one simulation cycle. |
+| `run <cycles>` | Execute N simulation cycles. |
+| `regs` | Display PC, SP, Status Register, and R0–R15 values. |
+| `gpio` | Display GPIO pin directions and output/input states. |
+| `timer` | Display timer state (running status, counter, compare, match flag). |
+| `interrupts` | Display interrupt controller status (enabled, pending, priority levels). |
+| `memory <addr> <cnt>` | Display `<cnt>` memory bytes starting at `<addr>` in hex. |
+| `mmio` | Display all registered MMIO addresses and their current values. |
+
+## Example Monitor Session
+
+```text
+Embedded Firmware Simulator initialized.
+Embedded Firmware Simulator Monitor (v1.0)
+Type 'help' for a list of commands.
+> step
+Stepped 1 cycle. Current cycle: 1
+> regs
+=== CPU Registers ===
+PC:     0x00000000
+SP:     0x00000000
+Status: 0x00000000
+R0:     0x00000000	R1:     0x00000000	R2:     0x00000000	R3:     0x00000000
+R4:     0x00000000	R5:     0x00000000	R6:     0x00000000	R7:     0x00000000
+R8:     0x00000000	R9:     0x00000000	R10:    0x00000000	R11:    0x00000000
+R12:    0x00000000	R13:    0x00000000	R14:    0x00000000	R15:    0x00000000
+> run 5
+Ran 5 cycles. Total cycle count: 6
+> gpio
+=== GPIO Peripheral State ===
+Base Address: 0x40000000
+  Pin 0: LOW
+  Pin 1: HIGH
+  ...
+> exit
+Exiting monitor.
+```
 
 ## Project Structure
 

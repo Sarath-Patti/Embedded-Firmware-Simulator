@@ -1,5 +1,6 @@
 #include "mmio/mmio_bus.hpp"
 #include "common/logger.hpp"
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 
@@ -52,6 +53,16 @@ void MMIOBus::write(common::Address address, common::DWord value) {
         throw std::out_of_range("MMIO write unmapped address " + std::to_string(address));
     }
     it->second->write(value);
+}
+
+std::vector<common::Address> MMIOBus::registeredAddresses() const {
+    std::vector<common::Address> addrs;
+    addrs.reserve(m_registers.size());
+    for (const auto& [addr, reg] : m_registers) {
+        addrs.push_back(addr);
+    }
+    std::sort(addrs.begin(), addrs.end());
+    return addrs;
 }
 
 } // namespace efs::mmio
