@@ -4,8 +4,26 @@
 
 namespace efs::cpu {
 
-CPU::CPU(kernel::InterruptController* interruptController)
-    : m_interruptController(interruptController) {
+CPU::CPU(system::SystemBus* systemBus)
+    : m_systemBus(systemBus) {
+    if (m_systemBus == nullptr) {
+        m_ownedSystemBus = std::make_unique<system::SystemBus>();
+        m_systemBus = m_ownedSystemBus.get();
+    }
+}
+
+CPU::CPU(kernel::InterruptController* interruptController) {
+    m_ownedSystemBus = std::make_unique<system::SystemBus>(nullptr, nullptr, interruptController);
+    m_systemBus = m_ownedSystemBus.get();
+}
+
+void CPU::setSystemBus(system::SystemBus* systemBus) noexcept {
+    m_systemBus = systemBus;
+    m_ownedSystemBus.reset();
+}
+
+system::SystemBus* CPU::systemBus() const noexcept {
+    return m_systemBus;
 }
 
 void CPU::start() {
@@ -46,14 +64,11 @@ void CPU::step() {
         m_firmware->execute();
     }
 
-    for (auto* timer : m_timers) {
-        if (timer != nullptr) {
-            timer->tick();
+    if (m_systemBus != nullptr) {
+        m_systemBus->tickTimers();
+        if (m_systemBus->interrupts() != nullptr) {
+            m_systemBus->interrupts()->dispatch();
         }
-    }
-
-    if (m_interruptController != nullptr) {
-        m_interruptController->dispatch();
     }
 }
 
@@ -92,38 +107,27 @@ std::shared_ptr<firmware::Firmware> CPU::firmware() const noexcept {
 }
 
 bool CPU::attachTimer(drivers::timer::Timer* timer) {
-    if (timer == nullptr) {
-        common::Logger::warning("CPU attempt to attach null timer");
+    if (m_systemBus == nullptr) {
         return false;
     }
-    auto it = std::find(m_timers.begin(), m_timers.end(), timer);
-    if (it != m_timers.end()) {
-        common::Logger::warning("Timer already attached to CPU");
-        return false;
-    }
-    m_timers.push_back(timer);
-    return true;
+    return m_systemBus->attachTimer(timer);
 }
 
 bool CPU::detachTimer(drivers::timer::Timer* timer) {
-    if (timer == nullptr) {
+    if (m_systemBus == nullptr) {
         return false;
     }
-    auto it = std::find(m_timers.begin(), m_timers.end(), timer);
-    if (it == m_timers.end()) {
-        common::Logger::warning("Attempted to detach unattached timer from CPU");
-        return false;
-    }
-    m_timers.erase(it);
-    return true;
+    return m_systemBus->detachTimer(timer);
 }
 
 void CPU::setInterruptController(kernel::InterruptController* controller) {
-    m_interruptController = controller;
+    if (m_systemBus != nullptr) {
+        m_systemBus->setInterrupts(controller);
+    }
 }
 
 kernel::InterruptController* CPU::interruptController() const noexcept {
-    return m_interruptController;
+    return m_systemBus ? m_systemBus->interrupts() : nullptr;
 }
 
 common::QWord CPU::cycleCount() const noexcept {

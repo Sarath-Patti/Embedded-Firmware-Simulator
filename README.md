@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator
 
-[![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg)](include/common/version.hpp)
+[![Version](https://img.shields.io/badge/version-v1.2.0-blue.svg)](include/common/version.hpp)
 [![Standard](https://img.shields.io/badge/c%2B%2B-20-green.svg)](CMakeLists.txt)
 [![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
 
@@ -12,8 +12,9 @@ A production-quality, modular C++20 simulator architecture for embedded firmware
 
 - [Overview](#overview)
 - [Motivation](#motivation)
-- [Key Features (v1.1)](#key-features-v11)
+- [Key Features (v1.2)](#key-features-v12)
 - [System Architecture](#system-architecture)
+- [System Bus Architecture](#system-bus-architecture)
 - [UART Peripheral Architecture](#uart-peripheral-architecture)
   - [Register Map](#register-map)
   - [FIFO Design](#fifo-design)
@@ -45,15 +46,16 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 
 ---
 
-## Key Features (v1.1)
+## Key Features (v1.2)
 
+- **System Bus Architecture (`efs::system::SystemBus`)**: Centralized communication layer interconnecting CPU, Memory, MMIO Bus, Interrupt Controller, and Hardware Peripherals.
 - **Memory Subsystem (`efs::memory::Memory`)**: Contiguous byte-addressable memory buffer with strict boundary checking, reset utilities, and error logging.
 - **MMIO Bus Infrastructure (`efs::mmio::MMIOBus`, `efs::mmio::Register`)**: Memory-mapped register abstraction enabling peripheral integration and dynamic address dispatching.
 - **GPIO Peripheral (`efs::drivers::gpio::GPIO`)**: 32-pin GPIO peripheral modeling Direction (DIR), Output (OUT), and Input (IN) registers.
 - **Hardware Timer Peripheral (`efs::drivers::timer::Timer`)**: Configurable hardware timer modeling Control (CTRL), Counter (COUNT), Compare (COMPARE), and Status (STATUS) registers with match interrupts.
 - **UART Peripheral (`efs::drivers::uart::UART`)**: Serial communication peripheral modeling DATA, STATUS, CONTROL, and BAUD registers with internal TX and RX FIFOs.
 - **Interrupt Controller (`efs::kernel::InterruptController`)**: Priority interrupt manager supporting 32 IRQ sources, enabling/disabling, priority dispatching, and ISR registration.
-- **CPU Execution Engine (`efs::cpu::CPU`)**: Cycle-based execution loop driving attached peripheral timers, dispatching pending interrupts, and running loaded firmware.
+- **CPU Execution Engine (`efs::cpu::CPU`)**: Cycle-based execution loop connected directly to the System Bus, driving timers, dispatching pending interrupts, and executing loaded firmware.
 - **Firmware Abstraction Layer (`efs::firmware::Firmware`, `efs::firmware::BasicFirmware`)**: Standardized lifecycle interface (`initialize`, `execute`, `shutdown`) and concrete sample firmware implementations.
 - **CPU Register File (`efs::cpu::registers::RegisterFile`)**: Encapsulates processor state including 16 General Purpose Registers (R0–R15), Program Counter (PC), Stack Pointer (SP), and Status Register (SR).
 - **Interactive Monitor CLI (`efs::monitor::Monitor`)**: Non-destructive command-line debugger allowing real-time step execution, memory dumps, register inspection, and peripheral status querying.
@@ -70,31 +72,35 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
                                     ▼
                        ┌─────────────────────────┐
                        │   CPU Execution Engine  │
-                       └─────┬───────────────┬───┘
-                             │               │
-                             ▼               ▼
-                       ┌───────────┐   ┌───────────┐
-                       │ Register  │   │ Firmware  │
-                       │   File    │   │ Subsystem │
-                       └───────────┘   └───────────┘
+                       └────────────┬────────────┘
+                                    │
+                                    ▼
+                       ┌─────────────────────────┐
+                       │       System Bus        │
+                       └─────┬───────────┬───────┘
+                             │           │
+           ┌─────────────────┼───────────┴─────────────────┐
+           ▼                 ▼                             ▼
+┌─────────────────────┐ ┌─────────┐             ┌─────────────────────┐
+│   Memory Subsystem  │ │  MMIO   │             │Interrupt Controller │
+└─────────────────────┘ └────┬────┘             └─────────────────────┘
                              │
-                             ▼
-                       ┌───────────┐
-                       │ Interrupt │
-                       │Controller │
-                       └─────┬─────┘
-                             │
-                             ▼
-                       ┌───────────┐
-                       │ Memory /  │
-                       │ MMIO Bus  │
-                       └─────┬─────┘
-           ┌─────────────────┼─────────────────┐
-           ▼                 ▼                 ▼
-┌─────────────────────┐ ┌─────────┐ ┌─────────────────────┐
-│   GPIO Peripheral   │ │  UART   │ │   Timer Peripheral  │
-└─────────────────────┘ └─────────┘ └─────────────────────┘
+         ┌───────────────────┼───────────────────┐
+         ▼                   ▼                   ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│ GPIO Peripheral │ │ TimerPeripheral │ │ UART Peripheral │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
+
+---
+
+## System Bus Architecture
+
+The `SystemBus` (`efs::system::SystemBus`) acts as the primary interconnect in the simulator hierarchy. It decouples the CPU execution engine from individual memory and peripheral details:
+
+- **Centralized Subsystem Management**: Provides high-cohesion accessors (`memory()`, `mmio()`, `interrupts()`) for primary platform services.
+- **Peripheral Registration**: Allows hardware peripherals (`GPIO`, `Timer`, `UART`) to register cleanly without modifying peripheral implementations or public APIs.
+- **Timer Ticking**: Centralizes cycle-based timer ticking (`tickTimers()`) invoked directly by the CPU execution loop.
 
 ---
 
@@ -145,7 +151,8 @@ Embedded-Firmware-Simulator/
 │   ├── kernel/               # Priority Interrupt Controller
 │   ├── memory/               # Byte-addressable Memory subsystem
 │   ├── mmio/                 # Memory-Mapped I/O Register & MMIOBus
-│   └── monitor/              # Interactive Monitor & CLI debugger
+│   ├── monitor/              # Interactive Monitor & CLI debugger
+│   └── system/               # SystemBus central interconnect
 ├── src/                      # Implementation files matching include/ structure
 │   ├── common/
 │   ├── cpu/
@@ -155,9 +162,10 @@ Embedded-Firmware-Simulator/
 │   ├── memory/
 │   ├── mmio/
 │   ├── monitor/
+│   ├── system/
 │   └── main.cpp              # Interactive simulator demo entry point
 ├── examples/                 # Sample applications (firmware_demo.cpp, uart_demo.cpp)
-├── tests/                    # CTest unit test suite (10 test suites)
+├── tests/                    # CTest unit test suite (11 test suites)
 ├── CMakeLists.txt            # CMake build system configuration
 └── README.md                 # Project documentation
 ```
@@ -206,7 +214,7 @@ Run standalone simulation demos showcasing firmware execution or UART serial com
 
 ## Running Tests
 
-Execute the full CTest unit test suite covering all 10 project test modules:
+Execute the full CTest unit test suite covering all 11 project test modules:
 
 ```bash
 ctest --output-on-failure
@@ -235,39 +243,13 @@ The `Monitor` subsystem provides a non-blocking interactive command-line interfa
 | `mmio` | `mmio` | Display all registered MMIO addresses and their current values. |
 | `uart` | `uart` | Display UART peripheral state (enabled status, baud, FIFO queue sizes, status flags). |
 
-### Example Session
-
-```text
-Embedded Firmware Simulator initialized.
-Embedded Firmware Simulator Monitor (v1.0)
-Type 'help' for a list of commands.
-> uart
-UART
-----------------------
-Enabled : YES
-
-Baud : 115200
-
-TX FIFO : 0 bytes
-
-RX FIFO : 0 bytes
-
-STATUS :
-
-TX Empty : YES
-
-RX Available : NO
-> exit
-Exiting monitor.
-```
-
 ---
 
 ## Project Statistics
 
-- **Core Subsystems**: Memory, MMIO, GPIO, Timer, UART, Interrupt Controller, CPU, Register File, Firmware, Interactive Monitor
+- **Core Subsystems**: System Bus, Memory, MMIO, GPIO, Timer, UART, Interrupt Controller, CPU, Register File, Firmware, Interactive Monitor
 - **Peripherals Modeled**: 3 (`GPIO`, `Hardware Timer`, `UART Serial Interface`)
-- **Unit Test Suites**: 10 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `RegisterTests`, `MonitorTests`, `UARTTests`)
+- **Unit Test Suites**: 11 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `RegisterTests`, `MonitorTests`, `UARTTests`, `SystemTests`)
 - **Language Standard**: Modern C++20
 
 ---
@@ -285,12 +267,12 @@ Exiting monitor.
 - [x] **v0.9 – CPU Register File**: 16 GPRs (R0–R15), Program Counter (PC), Stack Pointer (SP), and Status Register (SR).
 - [x] **v1.0 – Interactive Debugger & Monitor**: Non-blocking CLI monitor enabling step execution, memory dumps, and register inspection.
 - [x] **v1.1 – UART Serial Peripheral**: Polling-mode UART with TX/RX FIFOs, baud rate configuration, and MMIO registers.
+- [x] **v1.2 – System Bus**: Central communication bus interconnecting CPU, Memory, MMIO, Interrupt Controller, and peripherals.
 
 ---
 
 ## Future Work
 
-- **v1.2 – Instruction Set Architecture (ISA) & Decoder**: Lightweight opcode decoder and instruction pipeline.
 - **v1.3 – Firmware Binary Loader**: ELF and Intel HEX firmware binary image loader.
 - **v1.4 – Advanced Monitor Debugging**: Breakpoints, watchpoints, and symbol table resolution.
 

@@ -6,21 +6,29 @@
 #include "kernel/interrupt_controller.hpp"
 #include "firmware/firmware.hpp"
 #include "cpu/registers/register_file.hpp"
+#include "system/system_bus.hpp"
 #include <memory>
 #include <vector>
 
 namespace efs::cpu {
 
-/// Central CPU execution engine coordinating cycle simulation steps, peripherals, and firmware.
+/// Central CPU execution engine coordinating cycle simulation steps, SystemBus, and firmware.
 class CPU {
 public:
-    explicit CPU(kernel::InterruptController* interruptController = nullptr);
+    explicit CPU(system::SystemBus* systemBus = nullptr);
+    explicit CPU(kernel::InterruptController* interruptController);
     ~CPU() = default;
 
     CPU(const CPU&) = delete;
     CPU& operator=(const CPU&) = delete;
     CPU(CPU&&) = delete;
     CPU& operator=(CPU&&) = delete;
+
+    /// Sets or attaches the SystemBus reference.
+    void setSystemBus(system::SystemBus* systemBus) noexcept;
+
+    /// Returns pointer to attached SystemBus.
+    [[nodiscard]] system::SystemBus* systemBus() const noexcept;
 
     /// Starts CPU execution and initializes loaded firmware if present.
     void start();
@@ -31,7 +39,7 @@ public:
     /// Resets the CPU cycle counter and register file state.
     void reset();
 
-    /// Executes exactly one simulation step (firmware tick, timer update, interrupt dispatch).
+    /// Executes exactly one simulation step (firmware tick, SystemBus timer update, SystemBus interrupt dispatch).
     void step();
 
     /// Executes N simulation cycles while CPU remains in running state.
@@ -49,16 +57,16 @@ public:
     /// Returns pointer to current firmware instance or nullptr.
     [[nodiscard]] std::shared_ptr<firmware::Firmware> firmware() const noexcept;
 
-    /// Attaches a hardware timer to receive CPU tick notifications per simulation cycle.
+    /// Attaches a hardware timer to receive CPU tick notifications via SystemBus.
     bool attachTimer(drivers::timer::Timer* timer);
 
-    /// Detaches a hardware timer from the CPU.
+    /// Detaches a hardware timer from the SystemBus.
     bool detachTimer(drivers::timer::Timer* timer);
 
-    /// Sets the active interrupt controller.
+    /// Sets the active interrupt controller on the SystemBus.
     void setInterruptController(kernel::InterruptController* controller);
 
-    /// Returns pointer to active interrupt controller.
+    /// Returns pointer to active interrupt controller on the SystemBus.
     [[nodiscard]] kernel::InterruptController* interruptController() const noexcept;
 
     /// Accesses the CPU RegisterFile state (read-only).
@@ -78,8 +86,8 @@ private:
     bool m_running{false};
     registers::RegisterFile m_registerFile;
     std::shared_ptr<firmware::Firmware> m_firmware{nullptr};
-    kernel::InterruptController* m_interruptController{nullptr};
-    std::vector<drivers::timer::Timer*> m_timers;
+    system::SystemBus* m_systemBus{nullptr};
+    std::unique_ptr<system::SystemBus> m_ownedSystemBus{nullptr};
 };
 
 } // namespace efs::cpu
