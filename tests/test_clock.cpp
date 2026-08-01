@@ -44,6 +44,7 @@ void test_frequency_configuration() {
         threw_zero = true;
     }
     assert(threw_zero);
+    (void)threw_zero;
 
     std::cout << "[PASS] test_frequency_configuration\n";
 }

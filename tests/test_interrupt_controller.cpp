@@ -100,6 +100,7 @@ void test_handler_registration() {
 
     assert(ic.dispatch());
     assert(called);
+    (void)called;
 
     // Unregister handler
     assert(ic.unregisterHandler(6));
@@ -192,6 +193,7 @@ void test_timer_generated_interrupt() {
 
     assert(ic.dispatch());
     assert(timer_isr_fired);
+    (void)timer_isr_fired;
     assert(!ic.pending(TIMER_INT_ID));
 
     std::cout << "[PASS] test_timer_generated_interrupt\n";

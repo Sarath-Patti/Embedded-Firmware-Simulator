@@ -102,6 +102,7 @@ void test_cpu_interrupt_dispatch() {
 
     cpu.run(3);
     assert(isr_called);
+    (void)isr_called;
     assert(cpu.cycleCount() == 3);
 
     std::cout << "[PASS] test_cpu_interrupt_dispatch\n";

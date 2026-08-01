@@ -39,6 +39,7 @@ void test_event_scheduling_and_execution() {
     // At cycle 10, ready
     assert(scheduler.executeReadyEvents(10) == 1);
     assert(executed);
+    (void)executed;
     assert(scheduler.pendingCount() == 0);
 
     std::cout << "[PASS] test_event_scheduling_and_execution\n";
@@ -78,6 +79,7 @@ void test_cancellation_and_clearing() {
 
     scheduler.executeReadyEvents(10);
     assert(!fired);
+    (void)fired;
 
     scheduler.clear();
     assert(scheduler.pendingCount() == 0);

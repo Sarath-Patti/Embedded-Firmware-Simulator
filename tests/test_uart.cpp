@@ -109,6 +109,7 @@ void test_invalid_operations() {
         threw_write_disabled = true;
     }
     assert(threw_write_disabled);
+    (void)threw_write_disabled;
 
     // Read when disabled
     bool threw_read_disabled = false;
@@ -118,6 +119,7 @@ void test_invalid_operations() {
         threw_read_disabled = true;
     }
     assert(threw_read_disabled);
+    (void)threw_read_disabled;
 
     // Push when disabled
     bool threw_push_disabled = false;
@@ -127,6 +129,7 @@ void test_invalid_operations() {
         threw_push_disabled = true;
     }
     assert(threw_push_disabled);
+    (void)threw_push_disabled;
 
     // Enable and test empty RX read
     uart.enable();
@@ -137,6 +140,7 @@ void test_invalid_operations() {
         threw_empty_rx = true;
     }
     assert(threw_empty_rx);
+    (void)threw_empty_rx;
 
     // Invalid baud rate 0
     bool threw_zero_baud = false;
@@ -146,6 +150,7 @@ void test_invalid_operations() {
         threw_zero_baud = true;
     }
     assert(threw_zero_baud);
+    (void)threw_zero_baud;
 
     std::cout << "[PASS] test_invalid_operations\n";
 }

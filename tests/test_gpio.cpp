@@ -82,6 +82,7 @@ void test_invalid_pin() {
         pin_threw = true;
     }
     assert(pin_threw);
+    (void)pin_threw;
 
     bool read_threw = false;
     try {
@@ -90,6 +91,7 @@ void test_invalid_pin() {
         read_threw = true;
     }
     assert(read_threw);
+    (void)read_threw;
 
     std::cout << "[PASS] test_invalid_pin\n";
 }
@@ -106,6 +108,7 @@ void test_invalid_direction() {
         write_threw = true;
     }
     assert(write_threw);
+    (void)write_threw;
 
     bool toggle_threw = false;
     try {
@@ -114,6 +117,7 @@ void test_invalid_direction() {
         toggle_threw = true;
     }
     assert(toggle_threw);
+    (void)toggle_threw;
 
     std::cout << "[PASS] test_invalid_direction\n";
 }

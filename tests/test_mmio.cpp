@@ -74,6 +74,7 @@ void test_invalid_address_access() {
         read_threw = true;
     }
     assert(read_threw);
+    (void)read_threw;
 
     bool write_threw = false;
     try {
@@ -82,6 +83,7 @@ void test_invalid_address_access() {
         write_threw = true;
     }
     assert(write_threw);
+    (void)write_threw;
 
     std::cout << "[PASS] test_invalid_address_access\n";
 }
@@ -102,6 +104,7 @@ void test_register_removal() {
         read_threw = true;
     }
     assert(read_threw);
+    (void)read_threw;
 
     std::cout << "[PASS] test_register_removal\n";
 }
