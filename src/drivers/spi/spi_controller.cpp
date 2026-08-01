@@ -76,8 +76,8 @@ std::uint8_t SPIController::transfer(std::uint8_t byte) {
         rxByte = m_slave->transfer(byte);
     }
 
-    m_rxBuffer.push(rxByte);
     m_dataRegister->write(rxByte);
+    m_rxHasData = true;
 
     m_busy = false;
     updateStatusRegister();
@@ -85,7 +85,25 @@ std::uint8_t SPIController::transfer(std::uint8_t byte) {
 }
 
 void SPIController::writeByte(std::uint8_t byte) {
-    (void)transfer(byte);
+    if (!enabled()) {
+        common::Logger::error("Attempted SPI writeByte while controller is disabled");
+        throw std::runtime_error("SPI is disabled");
+    }
+
+    m_busy = true;
+    updateStatusRegister();
+
+    std::uint8_t rxByte = 0xFF;
+    if (m_slave != nullptr) {
+        rxByte = m_slave->transfer(byte);
+    }
+
+    m_dataRegister->write(rxByte);
+    m_rxBuffer.push(rxByte);
+    m_rxHasData = true;
+
+    m_busy = false;
+    updateStatusRegister();
 }
 
 std::uint8_t SPIController::readByte() {
@@ -93,18 +111,30 @@ std::uint8_t SPIController::readByte() {
         common::Logger::error("Attempted SPI readByte while controller is disabled");
         throw std::runtime_error("SPI is disabled");
     }
-    if (m_rxBuffer.empty()) {
+    if (m_rxBuffer.empty() && !m_rxHasData) {
         common::Logger::error("Attempted SPI readByte from empty RX buffer");
         throw std::underflow_error("SPI RX buffer empty");
     }
-    std::uint8_t rx = m_rxBuffer.front();
-    m_rxBuffer.pop();
+
+    std::uint8_t rx = 0;
+    if (!m_rxBuffer.empty()) {
+        rx = m_rxBuffer.front();
+        m_rxBuffer.pop();
+    } else {
+        rx = static_cast<std::uint8_t>(m_dataRegister->read() & 0xFF);
+        m_rxHasData = false;
+    }
+
+    if (m_rxBuffer.empty()) {
+        m_rxHasData = false;
+    }
+
     updateStatusRegister();
     return rx;
 }
 
 bool SPIController::hasData() const noexcept {
-    return !m_rxBuffer.empty();
+    return !m_rxBuffer.empty() || m_rxHasData;
 }
 
 void SPIController::setClockDivider(std::uint32_t value) {
@@ -154,6 +184,7 @@ void SPIController::reset() {
     m_slave = nullptr;
     std::queue<std::uint8_t> empty;
     std::swap(m_rxBuffer, empty);
+    m_rxHasData = false;
     m_dataRegister->reset();
     m_controlRegister->reset();
     m_clockDivRegister->reset();
@@ -189,7 +220,7 @@ void SPIController::updateStatusRegister() {
     if (m_busy) {
         status |= STATUS_BUSY_BIT;
     }
-    if (!m_rxBuffer.empty()) {
+    if (hasData()) {
         status |= STATUS_RX_AVAIL_BIT;
     }
     m_statusRegister->write(status);

@@ -105,6 +105,7 @@ private:
     SPIDevice* m_slave{nullptr};
     std::queue<std::uint8_t> m_rxBuffer;
     bool m_busy{false};
+    bool m_rxHasData{false};
 };
 
 } // namespace efs::drivers::spi
