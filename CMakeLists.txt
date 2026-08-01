@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 1.0.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 1.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +13,7 @@ add_library(embedded_firmware_simulator STATIC
     src/mmio/mmio_bus.cpp
     src/drivers/gpio/gpio.cpp
     src/drivers/timer/timer.cpp
+    src/drivers/uart/uart.cpp
     src/kernel/interrupt_controller.cpp
     src/cpu/cpu.cpp
     src/cpu/registers/register_file.cpp
@@ -38,12 +39,17 @@ target_link_libraries(simulator_demo PRIVATE embedded_firmware_simulator)
 add_executable(firmware_demo examples/firmware_demo.cpp)
 target_link_libraries(firmware_demo PRIVATE embedded_firmware_simulator)
 
+add_executable(uart_demo examples/uart_demo.cpp)
+target_link_libraries(uart_demo PRIVATE embedded_firmware_simulator)
+
 if(MSVC)
     target_compile_options(simulator_demo PRIVATE /W4)
     target_compile_options(firmware_demo PRIVATE /W4)
+    target_compile_options(uart_demo PRIVATE /W4)
 else()
     target_compile_options(simulator_demo PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(firmware_demo PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(uart_demo PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 # Testing Configuration
@@ -69,3 +75,4 @@ efs_add_test(cpu_tests tests/test_cpu.cpp CPUTests)
 efs_add_test(firmware_tests tests/test_firmware.cpp FirmwareTests)
 efs_add_test(register_tests tests/test_register_file.cpp RegisterTests)
 efs_add_test(monitor_tests tests/test_monitor.cpp MonitorTests)
+efs_add_test(uart_tests tests/test_uart.cpp UARTTests)

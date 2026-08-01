@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)](include/common/version.hpp)
+[![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg)](include/common/version.hpp)
 [![Standard](https://img.shields.io/badge/c%2B%2B-20-green.svg)](CMakeLists.txt)
 [![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
 
@@ -12,8 +12,11 @@ A production-quality, modular C++20 simulator architecture for embedded firmware
 
 - [Overview](#overview)
 - [Motivation](#motivation)
-- [Key Features (v1.0)](#key-features-v10)
+- [Key Features (v1.1)](#key-features-v11)
 - [System Architecture](#system-architecture)
+- [UART Peripheral Architecture](#uart-peripheral-architecture)
+  - [Register Map](#register-map)
+  - [FIFO Design](#fifo-design)
 - [Repository Layout](#repository-layout)
 - [Build Instructions](#build-instructions)
 - [Running the Simulator](#running-the-simulator)
@@ -42,12 +45,13 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 
 ---
 
-## Key Features (v1.0)
+## Key Features (v1.1)
 
 - **Memory Subsystem (`efs::memory::Memory`)**: Contiguous byte-addressable memory buffer with strict boundary checking, reset utilities, and error logging.
 - **MMIO Bus Infrastructure (`efs::mmio::MMIOBus`, `efs::mmio::Register`)**: Memory-mapped register abstraction enabling peripheral integration and dynamic address dispatching.
 - **GPIO Peripheral (`efs::drivers::gpio::GPIO`)**: 32-pin GPIO peripheral modeling Direction (DIR), Output (OUT), and Input (IN) registers.
 - **Hardware Timer Peripheral (`efs::drivers::timer::Timer`)**: Configurable hardware timer modeling Control (CTRL), Counter (COUNT), Compare (COMPARE), and Status (STATUS) registers with match interrupts.
+- **UART Peripheral (`efs::drivers::uart::UART`)**: Serial communication peripheral modeling DATA, STATUS, CONTROL, and BAUD registers with internal TX and RX FIFOs.
 - **Interrupt Controller (`efs::kernel::InterruptController`)**: Priority interrupt manager supporting 32 IRQ sources, enabling/disabling, priority dispatching, and ISR registration.
 - **CPU Execution Engine (`efs::cpu::CPU`)**: Cycle-based execution loop driving attached peripheral timers, dispatching pending interrupts, and running loaded firmware.
 - **Firmware Abstraction Layer (`efs::firmware::Firmware`, `efs::firmware::BasicFirmware`)**: Standardized lifecycle interface (`initialize`, `execute`, `shutdown`) and concrete sample firmware implementations.
@@ -85,12 +89,47 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
                        │ Memory /  │
                        │ MMIO Bus  │
                        └─────┬─────┘
-           ┌─────────────────┴─────────────────┐
-           ▼                                   ▼
-┌─────────────────────┐             ┌─────────────────────┐
-│   GPIO Peripheral   │             │   Timer Peripheral  │
-└─────────────────────┘             └─────────────────────┘
+           ┌─────────────────┼─────────────────┐
+           ▼                 ▼                 ▼
+┌─────────────────────┐ ┌─────────┐ ┌─────────────────────┐
+│   GPIO Peripheral   │ │  UART   │ │   Timer Peripheral  │
+└─────────────────────┘ └─────────┘ └─────────────────────┘
 ```
+
+---
+
+## UART Peripheral Architecture
+
+The UART (Universal Asynchronous Receiver-Transmitter) peripheral provides serial data transmission and reception capability mapped via the MMIO bus.
+
+```text
+                     MMIO Bus
+                         │
+                         ▼
+                  UART Peripheral
+         ┌────────────────────────────┐
+         │ DATA Register    (0x00)    │
+         │ STATUS Register  (0x04)    │
+         │ CONTROL Register (0x08)    │
+         │ BAUD Register    (0x0C)    │
+         └────────────────────────────┘
+                  │              │
+              TX FIFO        RX FIFO
+```
+
+### Register Map
+
+| Register | Offset | Access | Description | Bit Fields |
+| :--- | :--- | :--- | :--- | :--- |
+| `DATA` | `0x00` | R/W | Transmit & Receive Data Buffer | `[7:0] Data Byte` |
+| `STATUS` | `0x04` | R | Peripheral Status Flags | `Bit 0: TX Empty`, `Bit 1: RX Available`, `Bit 2: Enabled` |
+| `CONTROL`| `0x08` | R/W | Peripheral Control | `Bit 0: Enable` |
+| `BAUD` | `0x0C` | R/W | Baud Rate Configuration | `[31:0] Baud Rate (e.g. 115200)` |
+
+### FIFO Design
+
+- **TX FIFO (`m_txFifo`)**: STL `std::queue` storing outgoing bytes enqueued via `writeByte()`. Setting `STATUS_TX_EMPTY_BIT` when empty.
+- **RX FIFO (`m_rxFifo`)**: STL `std::queue` storing incoming bytes enqueued via `pushReceivedByte()` and dequeued via `readByte()`. Setting `STATUS_RX_AVAIL_BIT` when non-empty.
 
 ---
 
@@ -101,7 +140,7 @@ Embedded-Firmware-Simulator/
 ├── include/                  # Public C++ header interfaces
 │   ├── common/               # Types, logger, and project versioning
 │   ├── cpu/                  # CPU cycle engine & RegisterFile (cpu/registers/)
-│   ├── drivers/              # Hardware peripheral drivers (gpio/, timer/)
+│   ├── drivers/              # Hardware peripheral drivers (gpio/, timer/, uart/)
 │   ├── firmware/             # Firmware interface & BasicFirmware
 │   ├── kernel/               # Priority Interrupt Controller
 │   ├── memory/               # Byte-addressable Memory subsystem
@@ -117,8 +156,8 @@ Embedded-Firmware-Simulator/
 │   ├── mmio/
 │   ├── monitor/
 │   └── main.cpp              # Interactive simulator demo entry point
-├── examples/                 # Sample applications (firmware_demo.cpp)
-├── tests/                    # CTest unit test suite (9 test suites)
+├── examples/                 # Sample applications (firmware_demo.cpp, uart_demo.cpp)
+├── tests/                    # CTest unit test suite (10 test suites)
 ├── CMakeLists.txt            # CMake build system configuration
 └── README.md                 # Project documentation
 ```
@@ -155,18 +194,19 @@ Run the main interactive monitor executable to control and observe the simulator
 ./simulator_demo
 ```
 
-### Firmware Example Application
-Run the standalone simulation demo showcasing GPIO pin toggling and timer compare interrupts:
+### Example Applications
+Run standalone simulation demos showcasing firmware execution or UART serial communication:
 
 ```bash
 ./firmware_demo
+./uart_demo
 ```
 
 ---
 
 ## Running Tests
 
-Execute the full CTest unit test suite covering all 9 project modules:
+Execute the full CTest unit test suite covering all 10 project test modules:
 
 ```bash
 ctest --output-on-failure
@@ -193,6 +233,7 @@ The `Monitor` subsystem provides a non-blocking interactive command-line interfa
 | `interrupts` | `interrupts` | Display interrupt controller status (enabled, pending, priority levels). |
 | `memory` | `memory <addr> <cnt>` | Display `<cnt>` memory bytes starting at `<addr>` in hex. |
 | `mmio` | `mmio` | Display all registered MMIO addresses and their current values. |
+| `uart` | `uart` | Display UART peripheral state (enabled status, baud, FIFO queue sizes, status flags). |
 
 ### Example Session
 
@@ -200,29 +241,22 @@ The `Monitor` subsystem provides a non-blocking interactive command-line interfa
 Embedded Firmware Simulator initialized.
 Embedded Firmware Simulator Monitor (v1.0)
 Type 'help' for a list of commands.
-> step
-Stepped 1 cycle. Current cycle: 1
-> regs
-=== CPU Registers ===
-PC:     0x00000000
-SP:     0x00000000
-Status: 0x00000000
-R0:     0x00000000	R1:     0x00000000	R2:     0x00000000	R3:     0x00000000
-R4:     0x00000000	R5:     0x00000000	R6:     0x00000000	R7:     0x00000000
-R8:     0x00000000	R9:     0x00000000	R10:    0x00000000	R11:    0x00000000
-R12:    0x00000000	R13:    0x00000000	R14:    0x00000000	R15:    0x00000000
-> run 5
-Ran 5 cycles. Total cycle count: 6
-> gpio
-=== GPIO Peripheral State ===
-Base Address: 0x40000000
-  Pin 0: LOW
-  Pin 1: HIGH
-  Pin 2: LOW
-  ...
-> memory 0x40000000 12
-=== Memory Dump (0x40000000 - 12 bytes) ===
-0x40000000: 02 00 00 00 02 00 00 00 02 00 00 00 
+> uart
+UART
+----------------------
+Enabled : YES
+
+Baud : 115200
+
+TX FIFO : 0 bytes
+
+RX FIFO : 0 bytes
+
+STATUS :
+
+TX Empty : YES
+
+RX Available : NO
 > exit
 Exiting monitor.
 ```
@@ -231,9 +265,9 @@ Exiting monitor.
 
 ## Project Statistics
 
-- **Core Subsystems**: Memory, MMIO, GPIO, Timer, Interrupt Controller, CPU, Register File, Firmware, Interactive Monitor
-- **Peripherals Modeled**: 2 (`GPIO`, `Hardware Timer`)
-- **Unit Test Suites**: 9 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `RegisterTests`, `MonitorTests`)
+- **Core Subsystems**: Memory, MMIO, GPIO, Timer, UART, Interrupt Controller, CPU, Register File, Firmware, Interactive Monitor
+- **Peripherals Modeled**: 3 (`GPIO`, `Hardware Timer`, `UART Serial Interface`)
+- **Unit Test Suites**: 10 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `RegisterTests`, `MonitorTests`, `UARTTests`)
 - **Language Standard**: Modern C++20
 
 ---
@@ -250,12 +284,12 @@ Exiting monitor.
 - [x] **v0.8 – Firmware Execution Layer**: Abstract firmware interface (`initialize`, `execute`, `shutdown`) and `BasicFirmware` example.
 - [x] **v0.9 – CPU Register File**: 16 GPRs (R0–R15), Program Counter (PC), Stack Pointer (SP), and Status Register (SR).
 - [x] **v1.0 – Interactive Debugger & Monitor**: Non-blocking CLI monitor enabling step execution, memory dumps, and register inspection.
+- [x] **v1.1 – UART Serial Peripheral**: Polling-mode UART with TX/RX FIFOs, baud rate configuration, and MMIO registers.
 
 ---
 
 ## Future Work
 
-- **v1.1 – UART Serial Interface**: Universal Asynchronous Receiver-Transmitter peripheral with RX/TX FIFOs.
 - **v1.2 – Instruction Set Architecture (ISA) & Decoder**: Lightweight opcode decoder and instruction pipeline.
 - **v1.3 – Firmware Binary Loader**: ELF and Intel HEX firmware binary image loader.
 - **v1.4 – Advanced Monitor Debugging**: Breakpoints, watchpoints, and symbol table resolution.

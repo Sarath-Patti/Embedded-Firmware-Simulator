@@ -34,13 +34,15 @@ Monitor::Monitor(cpu::CPU* cpu,
                  mmio::MMIOBus* mmioBus,
                  drivers::gpio::GPIO* gpio,
                  drivers::timer::Timer* timer,
-                 kernel::InterruptController* interruptController)
+                 kernel::InterruptController* interruptController,
+                 drivers::uart::UART* uart)
     : m_cpu(cpu),
       m_memory(memory),
       m_mmioBus(mmioBus),
       m_gpio(gpio),
       m_timer(timer),
-      m_interruptController(interruptController) {
+      m_interruptController(interruptController),
+      m_uart(uart) {
 }
 
 void Monitor::setCPU(cpu::CPU* cpu) noexcept {
@@ -65,6 +67,10 @@ void Monitor::setTimer(drivers::timer::Timer* timer) noexcept {
 
 void Monitor::setInterruptController(kernel::InterruptController* interruptController) noexcept {
     m_interruptController = interruptController;
+}
+
+void Monitor::setUART(drivers::uart::UART* uart) noexcept {
+    m_uart = uart;
 }
 
 bool Monitor::executeCommand(std::string_view commandLine, std::ostream& output) {
@@ -144,6 +150,11 @@ bool Monitor::executeCommand(std::string_view commandLine, std::ostream& output)
         return true;
     }
 
+    if (cmd == "uart") {
+        printUART(output);
+        return true;
+    }
+
     output << "Unknown command: '" << cmdWord << "'. Type 'help' for supported commands.\n";
     return true;
 }
@@ -178,7 +189,8 @@ void Monitor::printHelp(std::ostream& output) const {
            << "  timer                 Display timer peripheral state.\n"
            << "  interrupts            Display interrupt controller status.\n"
            << "  memory <addr> <cnt>   Display memory bytes in hex.\n"
-           << "  mmio                  Display all registered MMIO addresses.\n";
+           << "  mmio                  Display all registered MMIO addresses.\n"
+           << "  uart                  Display UART peripheral state.\n";
 }
 
 void Monitor::printRegs(std::ostream& output) const {
@@ -301,6 +313,22 @@ void Monitor::printMMIO(std::ostream& output) const {
                << " (Value: 0x" << std::setw(8) << m_mmioBus->read(addr) << ")\n";
     }
     output << std::dec << std::setfill(' ');
+}
+
+void Monitor::printUART(std::ostream& output) const {
+    if (m_uart == nullptr) {
+        output << "No UART attached.\n";
+        return;
+    }
+    output << "UART\n"
+           << "----------------------\n"
+           << "Enabled : " << (m_uart->enabled() ? "YES" : "NO") << "\n\n"
+           << "Baud : " << m_uart->baudRate() << "\n\n"
+           << "TX FIFO : " << m_uart->txFifoSize() << (m_uart->txFifoSize() == 1 ? " byte" : " bytes") << "\n\n"
+           << "RX FIFO : " << m_uart->rxFifoSize() << (m_uart->rxFifoSize() == 1 ? " byte" : " bytes") << "\n\n"
+           << "STATUS :\n\n"
+           << "TX Empty : " << (m_uart->txEmpty() ? "YES" : "NO") << "\n\n"
+           << "RX Available : " << (m_uart->hasReceivedData() ? "YES" : "NO") << "\n";
 }
 
 void Monitor::handleRun(std::string_view args, std::ostream& output) {
