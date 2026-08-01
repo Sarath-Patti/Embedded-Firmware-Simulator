@@ -72,6 +72,9 @@ public:
     /// Dispatches the highest-priority enabled pending interrupt to its registered ISR. Returns true if dispatched.
     bool dispatch();
 
+    /// Resets enable, pending, and priority registers to zero.
+    void reset();
+
     /// Returns base address of MMIO register block.
     [[nodiscard]] common::Address baseAddress() const noexcept;
 

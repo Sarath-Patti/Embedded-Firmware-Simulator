@@ -25,8 +25,15 @@ public:
     /// Writes a new 32-bit value to the register.
     void write(common::DWord value) noexcept;
 
+    /// Resets the register value back to its initial value.
+    void reset() noexcept;
+
+    /// Returns the initial reset value of the register.
+    [[nodiscard]] common::DWord initialValue() const noexcept;
+
 private:
     common::Address m_address;
+    common::DWord m_initialValue;
     common::DWord m_value;
 };
 

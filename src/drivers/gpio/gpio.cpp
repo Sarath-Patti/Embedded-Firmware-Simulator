@@ -78,8 +78,8 @@ void GPIO::togglePin(std::uint8_t pin) {
 void GPIO::setExternalInput(std::uint8_t pin, PinState state) {
     validatePin(pin);
     if (isOutputPin(pin)) {
-        common::Logger::error("External input state set attempt on output pin " + std::to_string(pin));
-        throw std::logic_error("Cannot set external input on pin configured as Output: " + std::to_string(pin));
+        common::Logger::error("Attempted external input drive on output-configured GPIO pin " + std::to_string(pin));
+        throw std::logic_error("Cannot drive external input on output pin: " + std::to_string(pin));
     }
 
     common::DWord in = m_inRegister->read();
@@ -89,6 +89,12 @@ void GPIO::setExternalInput(std::uint8_t pin, PinState state) {
         in &= ~(1U << pin);
     }
     m_inRegister->write(in);
+}
+
+void GPIO::reset() {
+    m_dirRegister->reset();
+    m_outRegister->reset();
+    m_inRegister->reset();
 }
 
 common::Address GPIO::baseAddress() const noexcept {

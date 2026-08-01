@@ -72,6 +72,9 @@ public:
     /// Dequeues and returns the front byte from TX FIFO.
     [[nodiscard]] std::uint8_t popTxByte();
 
+    /// Resets control, data registers, and flushes TX/RX FIFOs.
+    void reset();
+
     [[nodiscard]] common::Address baseAddress() const noexcept;
     [[nodiscard]] common::Address dataAddress() const noexcept;
     [[nodiscard]] common::Address statusAddress() const noexcept;

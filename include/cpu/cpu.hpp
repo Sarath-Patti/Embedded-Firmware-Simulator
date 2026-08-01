@@ -7,6 +7,7 @@
 #include "firmware/firmware.hpp"
 #include "firmware/firmware_manager.hpp"
 #include "cpu/registers/register_file.hpp"
+#include "system/power/power_controller.hpp"
 #include "system/system_bus.hpp"
 #include <memory>
 #include <string>
@@ -14,7 +15,7 @@
 
 namespace efs::cpu {
 
-/// Central CPU execution engine coordinating cycle simulation steps, SystemBus, and FirmwareManager.
+/// Central CPU execution engine coordinating cycle simulation steps, SystemBus, FirmwareManager, and PowerController.
 class CPU {
 public:
     explicit CPU(system::SystemBus* systemBus = nullptr);
@@ -25,6 +26,15 @@ public:
     CPU& operator=(const CPU&) = delete;
     CPU(CPU&&) = delete;
     CPU& operator=(CPU&&) = delete;
+
+    /// Accesses the PowerController instance (mutable).
+    [[nodiscard]] system::power::PowerController& powerController() noexcept;
+
+    /// Accesses the PowerController instance (read-only).
+    [[nodiscard]] const system::power::PowerController& powerController() const noexcept;
+
+    /// Sets or attaches an external PowerController reference.
+    void setPowerController(system::power::PowerController* powerController) noexcept;
 
     /// Accesses the central FirmwareManager component (mutable).
     [[nodiscard]] firmware::FirmwareManager& firmwareManager() noexcept;
@@ -48,9 +58,10 @@ public:
     void reset();
 
     /// Executes exactly one simulation step (FirmwareManager update, SystemBus timer update, SystemBus interrupt dispatch).
+    /// Execution is halted while power state is OFF or SLEEP.
     void step();
 
-    /// Executes N simulation cycles while CPU remains in running state.
+    /// Executes N simulation cycles while CPU remains in running state and power is ON.
     void run(common::QWord cycles);
 
     /// Helper loading firmware into FirmwareManager under a given name (defaults to "default").
@@ -94,6 +105,8 @@ private:
     bool m_running{false};
     registers::RegisterFile m_registerFile;
     firmware::FirmwareManager m_firmwareManager;
+    system::power::PowerController m_ownedPowerController;
+    system::power::PowerController* m_powerController{&m_ownedPowerController};
     system::SystemBus* m_systemBus{nullptr};
     std::unique_ptr<system::SystemBus> m_ownedSystemBus{nullptr};
 };

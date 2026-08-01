@@ -80,6 +80,9 @@ public:
     /// Returns attached UART peripheral pointer.
     [[nodiscard]] drivers::uart::UART* uart() const noexcept;
 
+    /// Resets all attached peripherals (GPIO, Timers, UART, Interrupt Controller, Memory, Clock).
+    void reset();
+
 private:
     memory::Memory* m_memory{nullptr};
     mmio::MMIOBus* m_mmioBus{nullptr};

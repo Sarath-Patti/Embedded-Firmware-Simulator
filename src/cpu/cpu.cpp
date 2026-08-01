@@ -21,6 +21,22 @@ CPU::~CPU() {
     stop();
 }
 
+system::power::PowerController& CPU::powerController() noexcept {
+    return *m_powerController;
+}
+
+const system::power::PowerController& CPU::powerController() const noexcept {
+    return *m_powerController;
+}
+
+void CPU::setPowerController(system::power::PowerController* powerController) noexcept {
+    if (powerController != nullptr) {
+        m_powerController = powerController;
+    } else {
+        m_powerController = &m_ownedPowerController;
+    }
+}
+
 firmware::FirmwareManager& CPU::firmwareManager() noexcept {
     return m_firmwareManager;
 }
@@ -67,6 +83,11 @@ registers::RegisterFile& CPU::registerFile() noexcept {
 }
 
 void CPU::step() {
+    // Instruction execution is restricted while power state is OFF or SLEEP
+    if (!m_powerController->isPowerOn()) {
+        return;
+    }
+
     m_cycleCount++;
 
     if (m_systemBus != nullptr) {
@@ -85,6 +106,9 @@ void CPU::step() {
 void CPU::run(common::QWord cycles) {
     start();
     for (common::QWord i = 0; i < cycles && m_running; ++i) {
+        if (!m_powerController->isPowerOn()) {
+            break;
+        }
         step();
     }
 }
@@ -98,7 +122,6 @@ bool CPU::loadFirmware(std::shared_ptr<firmware::Firmware> firmware, const std::
         stop();
     }
     if (!m_firmwareManager.registerFirmware(name, firmware)) {
-        // If registration failed because name exists, update reference
         m_firmwareManager.setActiveFirmware(name);
     } else {
         m_firmwareManager.setActiveFirmware(name);

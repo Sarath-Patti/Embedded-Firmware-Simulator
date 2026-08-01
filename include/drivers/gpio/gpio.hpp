@@ -51,6 +51,9 @@ public:
     /// Simulates external signal input on a pin.
     void setExternalInput(std::uint8_t pin, PinState state);
 
+    /// Resets DIR, OUT, and IN registers to 0.
+    void reset();
+
     /// Returns MMIO base address.
     [[nodiscard]] common::Address baseAddress() const noexcept;
 

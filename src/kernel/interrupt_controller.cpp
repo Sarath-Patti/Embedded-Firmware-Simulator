@@ -1,7 +1,5 @@
 #include "kernel/interrupt_controller.hpp"
 #include "common/logger.hpp"
-#include <algorithm>
-#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -14,7 +12,7 @@ InterruptController::InterruptController(mmio::MMIOBus& bus, common::Address bas
       m_pendingRegister(std::make_shared<mmio::Register>(baseAddress + PENDING_OFFSET, 0)),
       m_priorityRegister(std::make_shared<mmio::Register>(baseAddress + PRIORITY_OFFSET, 0)) {
     m_registered.fill(false);
-    m_priorities.fill(128); // Default priority value
+    m_priorities.fill(0);
     m_handlers.fill(nullptr);
 
     if (!m_bus.registerRegister(m_enableRegister) ||
@@ -38,20 +36,20 @@ bool InterruptController::registerInterrupt(std::uint8_t id) {
         return false;
     }
     m_registered[id] = true;
-    m_priorities[id] = 128;
+    m_priorities[id] = 0;
+    m_handlers[id] = nullptr;
     return true;
 }
 
 bool InterruptController::unregisterInterrupt(std::uint8_t id) {
     validateInterruptId(id);
     if (!m_registered[id]) {
-        common::Logger::warning("Attempted to unregister unregistered interrupt ID: " + std::to_string(id));
         return false;
     }
     disable(id);
     clear(id);
-    m_handlers[id] = nullptr;
     m_registered[id] = false;
+    m_handlers[id] = nullptr;
     return true;
 }
 
@@ -61,19 +59,16 @@ void InterruptController::enable(std::uint8_t id) {
         common::Logger::warning("Cannot enable unregistered interrupt ID: " + std::to_string(id));
         return;
     }
-    common::DWord en = m_enableRegister->read();
-    en |= (1U << id);
-    m_enableRegister->write(en);
+    common::DWord enableReg = m_enableRegister->read();
+    enableReg |= (1U << id);
+    m_enableRegister->write(enableReg);
 }
 
 void InterruptController::disable(std::uint8_t id) {
     validateInterruptId(id);
-    if (!m_registered[id]) {
-        return;
-    }
-    common::DWord en = m_enableRegister->read();
-    en &= ~(1U << id);
-    m_enableRegister->write(en);
+    common::DWord enableReg = m_enableRegister->read();
+    enableReg &= ~(1U << id);
+    m_enableRegister->write(enableReg);
 }
 
 void InterruptController::trigger(std::uint8_t id) {
@@ -82,29 +77,28 @@ void InterruptController::trigger(std::uint8_t id) {
         common::Logger::warning("Cannot trigger unregistered interrupt ID: " + std::to_string(id));
         return;
     }
-    common::DWord pend = m_pendingRegister->read();
-    pend |= (1U << id);
-    m_pendingRegister->write(pend);
+    common::DWord pendingReg = m_pendingRegister->read();
+    pendingReg |= (1U << id);
+    m_pendingRegister->write(pendingReg);
 }
 
 void InterruptController::clear(std::uint8_t id) {
     validateInterruptId(id);
-    if (!m_registered[id]) {
-        return;
-    }
-    common::DWord pend = m_pendingRegister->read();
-    pend &= ~(1U << id);
-    m_pendingRegister->write(pend);
+    common::DWord pendingReg = m_pendingRegister->read();
+    pendingReg &= ~(1U << id);
+    m_pendingRegister->write(pendingReg);
 }
 
 bool InterruptController::pending(std::uint8_t id) const {
     validateInterruptId(id);
-    return (m_pendingRegister->read() & (1U << id)) != 0;
+    common::DWord pendingReg = m_pendingRegister->read();
+    return (pendingReg & (1U << id)) != 0;
 }
 
 bool InterruptController::enabled(std::uint8_t id) const {
     validateInterruptId(id);
-    return (m_enableRegister->read() & (1U << id)) != 0;
+    common::DWord enableReg = m_enableRegister->read();
+    return (enableReg & (1U << id)) != 0;
 }
 
 bool InterruptController::isRegistered(std::uint8_t id) const noexcept {
@@ -148,32 +142,43 @@ bool InterruptController::unregisterHandler(std::uint8_t id) {
 }
 
 bool InterruptController::dispatch() {
-    int bestId = -1;
-    std::uint8_t highestPriority = std::numeric_limits<std::uint8_t>::max();
+    common::DWord enableReg = m_enableRegister->read();
+    common::DWord pendingReg = m_pendingRegister->read();
+    common::DWord active = enableReg & pendingReg;
 
-    for (std::uint8_t id = 0; id < MAX_INTERRUPTS; ++id) {
-        if (m_registered[id] && enabled(id) && pending(id) && m_handlers[id] != nullptr) {
-            std::uint8_t prio = m_priorities[id];
-            // Lower priority numerical value indicates higher execution priority
-            if (bestId == -1 || prio < highestPriority) {
-                bestId = static_cast<int>(id);
-                highestPriority = prio;
+    if (active == 0) {
+        return false;
+    }
+
+    int highestPriorityId = -1;
+    std::uint8_t highestPriorityVal = 255;
+
+    for (std::uint8_t i = 0; i < MAX_INTERRUPTS; ++i) {
+        if ((active & (1U << i)) != 0) {
+            std::uint8_t priority = m_priorities[i];
+            if (highestPriorityId == -1 || priority < highestPriorityVal) {
+                highestPriorityId = i;
+                highestPriorityVal = priority;
             }
         }
     }
 
-    if (bestId == -1) {
-        return false;
+    if (highestPriorityId != -1) {
+        auto targetId = static_cast<std::uint8_t>(highestPriorityId);
+        clear(targetId);
+        if (m_handlers[targetId] != nullptr) {
+            m_handlers[targetId]();
+        }
+        return true;
     }
 
-    auto targetId = static_cast<std::uint8_t>(bestId);
-    clear(targetId);
+    return false;
+}
 
-    if (m_handlers[targetId]) {
-        m_handlers[targetId]();
-    }
-
-    return true;
+void InterruptController::reset() {
+    m_enableRegister->reset();
+    m_pendingRegister->reset();
+    m_priorityRegister->reset();
 }
 
 common::Address InterruptController::baseAddress() const noexcept {

@@ -70,7 +70,7 @@ std::uint8_t UART::readByte() {
     }
     if (m_rxFifo.empty()) {
         common::Logger::error("Attempted to read from empty UART RX FIFO");
-        throw std::underflow_error("RX FIFO is empty");
+        throw std::underflow_error("UART RX FIFO empty");
     }
     std::uint8_t byte = m_rxFifo.front();
     m_rxFifo.pop();
@@ -81,7 +81,7 @@ std::uint8_t UART::readByte() {
 
 void UART::pushReceivedByte(std::uint8_t byte) {
     if (!enabled()) {
-        common::Logger::error("Attempted to push received byte into disabled UART");
+        common::Logger::error("Attempted to push byte into disabled UART RX FIFO");
         throw std::runtime_error("UART is disabled");
     }
     m_rxFifo.push(byte);
@@ -98,8 +98,8 @@ bool UART::txEmpty() const noexcept {
 
 void UART::setBaudRate(std::uint32_t baud) {
     if (baud == 0) {
-        common::Logger::error("Attempted to set invalid baud rate 0 on UART");
-        throw std::invalid_argument("Invalid baud rate");
+        common::Logger::error("Attempted to set invalid UART baud rate: 0");
+        throw std::invalid_argument("Baud rate cannot be 0");
     }
     m_baudRegister->write(baud);
 }
@@ -119,12 +119,23 @@ std::size_t UART::rxFifoSize() const noexcept {
 std::uint8_t UART::popTxByte() {
     if (m_txFifo.empty()) {
         common::Logger::error("Attempted to pop from empty UART TX FIFO");
-        throw std::underflow_error("TX FIFO is empty");
+        throw std::underflow_error("UART TX FIFO empty");
     }
     std::uint8_t byte = m_txFifo.front();
     m_txFifo.pop();
     updateStatusRegister();
     return byte;
+}
+
+void UART::reset() {
+    disable();
+    std::queue<std::uint8_t> emptyTx;
+    std::swap(m_txFifo, emptyTx);
+    std::queue<std::uint8_t> emptyRx;
+    std::swap(m_rxFifo, emptyRx);
+    m_dataRegister->reset();
+    m_controlRegister->reset();
+    updateStatusRegister();
 }
 
 common::Address UART::baseAddress() const noexcept {

@@ -122,4 +122,26 @@ drivers::uart::UART* SystemBus::uart() const noexcept {
     return m_uart;
 }
 
+void SystemBus::reset() {
+    if (m_gpio != nullptr) {
+        m_gpio->reset();
+    }
+    for (auto* timer : m_timers) {
+        if (timer != nullptr) {
+            timer->reset();
+        }
+    }
+    if (m_uart != nullptr) {
+        m_uart->reset();
+    }
+    if (m_interruptController != nullptr) {
+        m_interruptController->reset();
+    }
+    if (m_memory != nullptr) {
+        m_memory->clear();
+    }
+    m_clock.reset();
+    m_scheduler.clear();
+}
+
 } // namespace efs::system

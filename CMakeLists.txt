@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 1.6.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 1.7.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -37,6 +37,8 @@ add_library(embedded_firmware_simulator STATIC
     src/system/system_bus.cpp
     src/system/clock/simulation_clock.cpp
     src/system/scheduler/event_scheduler.cpp
+    src/system/power/power_controller.cpp
+    src/system/power/reset_controller.cpp
     src/cpu/cpu.cpp
     src/cpu/registers/register_file.cpp
     src/firmware/firmware.cpp
@@ -79,6 +81,10 @@ add_executable(firmware_manager_demo examples/firmware_manager_demo.cpp)
 target_link_libraries(firmware_manager_demo PRIVATE embedded_firmware_simulator)
 target_compile_options(firmware_manager_demo PRIVATE ${EFS_WARNING_FLAGS})
 
+add_executable(power_demo examples/power_demo.cpp)
+target_link_libraries(power_demo PRIVATE embedded_firmware_simulator)
+target_compile_options(power_demo PRIVATE ${EFS_WARNING_FLAGS})
+
 # Testing Configuration
 enable_testing()
 
@@ -97,6 +103,7 @@ efs_add_test(interrupt_tests tests/test_interrupt_controller.cpp InterruptTests)
 efs_add_test(cpu_tests tests/test_cpu.cpp CPUTests)
 efs_add_test(firmware_tests tests/test_firmware.cpp FirmwareTests)
 efs_add_test(firmware_manager_tests tests/test_firmware_manager.cpp FirmwareManagerTests)
+efs_add_test(power_tests tests/test_power.cpp PowerTests)
 efs_add_test(register_tests tests/test_register_file.cpp RegisterTests)
 efs_add_test(monitor_tests tests/test_monitor.cpp MonitorTests)
 efs_add_test(uart_tests tests/test_uart.cpp UARTTests)
