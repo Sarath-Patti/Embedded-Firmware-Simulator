@@ -17,7 +17,7 @@ class CPU {
 public:
     explicit CPU(system::SystemBus* systemBus = nullptr);
     explicit CPU(kernel::InterruptController* interruptController);
-    ~CPU() = default;
+    ~CPU();
 
     CPU(const CPU&) = delete;
     CPU& operator=(const CPU&) = delete;

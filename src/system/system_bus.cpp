@@ -12,6 +12,16 @@ SystemBus::SystemBus(memory::Memory* memory,
       m_interruptController(interruptController) {
 }
 
+SystemBus::~SystemBus() {
+    for (auto* timer : m_timers) {
+        if (timer != nullptr) {
+            timer->detachClock();
+            timer->detachScheduler();
+        }
+    }
+    m_timers.clear();
+}
+
 clock::SimulationClock& SystemBus::clock() noexcept {
     return m_clock;
 }

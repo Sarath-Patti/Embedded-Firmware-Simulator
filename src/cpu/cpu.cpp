@@ -17,6 +17,10 @@ CPU::CPU(kernel::InterruptController* interruptController) {
     m_systemBus = m_ownedSystemBus.get();
 }
 
+CPU::~CPU() {
+    stop();
+}
+
 void CPU::setSystemBus(system::SystemBus* systemBus) noexcept {
     m_systemBus = systemBus;
     m_ownedSystemBus.reset();

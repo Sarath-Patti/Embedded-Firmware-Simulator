@@ -19,7 +19,7 @@ public:
     SystemBus(memory::Memory* memory = nullptr,
               mmio::MMIOBus* mmioBus = nullptr,
               kernel::InterruptController* interruptController = nullptr);
-    ~SystemBus() = default;
+    ~SystemBus();
 
     SystemBus(const SystemBus&) = delete;
     SystemBus& operator=(const SystemBus&) = delete;
