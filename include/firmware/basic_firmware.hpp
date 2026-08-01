@@ -16,7 +16,7 @@ class BasicFirmware : public Firmware {
 public:
     BasicFirmware(hal::GPIOHAL& gpioHAL, std::uint8_t pin, common::Size toggleInterval = 1);
     BasicFirmware(drivers::gpio::GPIO& gpio, std::uint8_t pin, common::Size toggleInterval = 1);
-    ~BasicFirmware() override = default;
+    ~BasicFirmware() override;
 
     void initialize() override;
     void execute() override;

@@ -29,31 +29,45 @@ void test_command_parsing() {
     Monitor monitor(&cpu, &memory, &bus, &gpio, &timer, &ic);
 
     std::ostringstream ss;
-    assert(monitor.executeCommand("help", ss));
+    bool ok1 = monitor.executeCommand("help", ss);
+    assert(ok1);
+    (void)ok1;
     assert(ss.str().find("Supported commands:") != std::string::npos);
 
     ss.str("");
-    assert(monitor.executeCommand("regs", ss));
+    bool ok2 = monitor.executeCommand("regs", ss);
+    assert(ok2);
+    (void)ok2;
     assert(ss.str().find("=== CPU Registers ===") != std::string::npos);
 
     ss.str("");
-    assert(monitor.executeCommand("gpio", ss));
+    bool ok3 = monitor.executeCommand("gpio", ss);
+    assert(ok3);
+    (void)ok3;
     assert(ss.str().find("=== GPIO Peripheral State ===") != std::string::npos);
 
     ss.str("");
-    assert(monitor.executeCommand("timer", ss));
+    bool ok4 = monitor.executeCommand("timer", ss);
+    assert(ok4);
+    (void)ok4;
     assert(ss.str().find("=== Timer Peripheral State ===") != std::string::npos);
 
     ss.str("");
-    assert(monitor.executeCommand("interrupts", ss));
+    bool ok5 = monitor.executeCommand("interrupts", ss);
+    assert(ok5);
+    (void)ok5;
     assert(ss.str().find("=== Interrupt Controller Status ===") != std::string::npos);
 
     ss.str("");
-    assert(monitor.executeCommand("mmio", ss));
+    bool ok6 = monitor.executeCommand("mmio", ss);
+    assert(ok6);
+    (void)ok6;
     assert(ss.str().find("=== Registered MMIO Addresses") != std::string::npos);
 
     ss.str("");
-    assert(!monitor.executeCommand("exit", ss));
+    bool ok7 = !monitor.executeCommand("exit", ss);
+    assert(ok7);
+    (void)ok7;
     assert(ss.str().find("Exiting monitor.") != std::string::npos);
 
     std::cout << "[PASS] test_command_parsing\n";
@@ -64,11 +78,15 @@ void test_invalid_commands() {
     Monitor monitor(&cpu);
 
     std::ostringstream ss;
-    assert(monitor.executeCommand("invalidcmd", ss));
+    bool ok1 = monitor.executeCommand("invalidcmd", ss);
+    assert(ok1);
+    (void)ok1;
     assert(ss.str().find("Unknown command: 'invalidcmd'") != std::string::npos);
 
     ss.str("");
-    assert(monitor.executeCommand("foo bar baz", ss));
+    bool ok2 = monitor.executeCommand("foo bar baz", ss);
+    assert(ok2);
+    (void)ok2;
     assert(ss.str().find("Unknown command: 'foo'") != std::string::npos);
 
     std::cout << "[PASS] test_invalid_commands\n";
@@ -80,15 +98,21 @@ void test_numeric_argument_validation() {
     Monitor monitor(&cpu, &memory);
 
     std::ostringstream ss;
-    assert(monitor.executeCommand("run invalid", ss));
+    bool ok1 = monitor.executeCommand("run invalid", ss);
+    assert(ok1);
+    (void)ok1;
     assert(ss.str().find("Invalid cycle count") != std::string::npos);
 
     ss.str("");
-    assert(monitor.executeCommand("run -5", ss));
+    bool ok2 = monitor.executeCommand("run -5", ss);
+    assert(ok2);
+    (void)ok2;
     assert(ss.str().find("Invalid cycle count") != std::string::npos);
 
     ss.str("");
-    assert(monitor.executeCommand("memory invalid_addr 10", ss));
+    bool ok3 = monitor.executeCommand("memory invalid_addr 10", ss);
+    assert(ok3);
+    (void)ok3;
     assert(ss.str().find("Invalid memory address format") != std::string::npos);
 
     std::cout << "[PASS] test_numeric_argument_validation\n";
@@ -98,7 +122,9 @@ void test_help_command() {
     Monitor monitor;
     std::ostringstream ss;
 
-    assert(monitor.executeCommand("help", ss));
+    bool ok = monitor.executeCommand("help", ss);
+    assert(ok);
+    (void)ok;
     std::string out = ss.str();
     assert(out.find("help") != std::string::npos);
     assert(out.find("exit") != std::string::npos);
@@ -120,7 +146,9 @@ void test_reset_command() {
 
     Monitor monitor(&cpu);
     std::ostringstream ss;
-    assert(monitor.executeCommand("reset", ss));
+    bool ok = monitor.executeCommand("reset", ss);
+    assert(ok);
+    (void)ok;
     assert(cpu.cycleCount() == 0);
     assert(ss.str().find("Simulator reset.") != std::string::npos);
 
@@ -132,7 +160,9 @@ void test_run_command() {
     Monitor monitor(&cpu);
     std::ostringstream ss;
 
-    assert(monitor.executeCommand("run 15", ss));
+    bool ok = monitor.executeCommand("run 15", ss);
+    assert(ok);
+    (void)ok;
     assert(cpu.cycleCount() == 15);
     assert(ss.str().find("Ran 15 cycles.") != std::string::npos);
 
@@ -145,7 +175,9 @@ void test_step_command() {
     std::ostringstream ss;
 
     assert(cpu.cycleCount() == 0);
-    assert(monitor.executeCommand("step", ss));
+    bool ok = monitor.executeCommand("step", ss);
+    assert(ok);
+    (void)ok;
     assert(cpu.cycleCount() == 1);
     assert(ss.str().find("Stepped 1 cycle.") != std::string::npos);
 

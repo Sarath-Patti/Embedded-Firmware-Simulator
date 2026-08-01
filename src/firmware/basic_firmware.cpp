@@ -11,6 +11,8 @@ BasicFirmware::BasicFirmware(drivers::gpio::GPIO& gpio, std::uint8_t pin, common
     : m_gpioHAL(gpio), m_pin(pin), m_toggleInterval(toggleInterval == 0 ? 1 : toggleInterval) {
 }
 
+BasicFirmware::~BasicFirmware() = default;
+
 void BasicFirmware::initialize() {
     m_initialized = true;
     m_shutdown = false;

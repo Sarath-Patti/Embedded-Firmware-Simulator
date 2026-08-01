@@ -30,6 +30,7 @@ void test_event_scheduling_and_execution() {
     }, 10, "Test Event");
 
     assert(id > 0);
+    (void)id;
     assert(scheduler.pendingCount() == 1);
 
     // At cycle 5, not ready
@@ -74,7 +75,9 @@ void test_cancellation_and_clearing() {
     (void)id2;
 
     assert(scheduler.pendingCount() == 2);
-    assert(scheduler.cancel(id1));
+    bool cancelled = scheduler.cancel(id1);
+    assert(cancelled);
+    (void)cancelled;
     assert(scheduler.pendingCount() == 1);
 
     scheduler.executeReadyEvents(10);
@@ -124,7 +127,9 @@ void test_monitor_events_output() {
     Monitor monitor(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &scheduler);
     std::ostringstream ss;
 
-    assert(monitor.executeCommand("events", ss));
+    bool exec_ok = monitor.executeCommand("events", ss);
+    assert(exec_ok);
+    (void)exec_ok;
     std::string out = ss.str();
 
     assert(out.find("Pending Events") != std::string::npos);

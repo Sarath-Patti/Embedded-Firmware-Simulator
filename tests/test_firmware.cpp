@@ -9,6 +9,7 @@
 
 class MockFirmware : public efs::firmware::Firmware {
 public:
+    ~MockFirmware() override = default;
     void initialize() override {
         init_count++;
     }
@@ -29,7 +30,9 @@ void test_firmware_loading() {
     assert(!cpu.firmwareLoaded());
 
     auto fw = std::make_shared<MockFirmware>();
-    assert(cpu.loadFirmware(fw));
+    bool load_ok = cpu.loadFirmware(fw);
+    assert(load_ok);
+    (void)load_ok;
     assert(cpu.firmwareLoaded());
     assert(cpu.firmware() == fw);
 

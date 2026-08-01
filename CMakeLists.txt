@@ -39,6 +39,7 @@ add_library(embedded_firmware_simulator STATIC
     src/system/scheduler/event_scheduler.cpp
     src/cpu/cpu.cpp
     src/cpu/registers/register_file.cpp
+    src/firmware/firmware.cpp
     src/firmware/basic_firmware.cpp
     src/monitor/monitor.cpp
 )

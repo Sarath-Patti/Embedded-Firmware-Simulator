@@ -70,7 +70,9 @@ void test_cpu_timer_ticking() {
     Timer timer(bus, 0x40001000);
     CPU cpu;
 
-    assert(cpu.attachTimer(&timer));
+    bool attach_ok = cpu.attachTimer(&timer);
+    assert(attach_ok);
+    (void)attach_ok;
     timer.setCompare(100);
     timer.start();
 
@@ -87,7 +89,9 @@ void test_cpu_interrupt_dispatch() {
     Timer timer(bus, 0x40001000);
     CPU cpu(&ic);
 
-    assert(cpu.attachTimer(&timer));
+    bool attach_ok = cpu.attachTimer(&timer);
+    assert(attach_ok);
+    (void)attach_ok;
 
     constexpr std::uint8_t TIMER_INT_ID = 0;
     ic.registerInterrupt(TIMER_INT_ID);
@@ -113,13 +117,21 @@ void test_cpu_timer_attachment_removal() {
     Timer timer(bus, 0x40001000);
     CPU cpu;
 
-    assert(cpu.attachTimer(&timer));
+    bool attach1 = cpu.attachTimer(&timer);
+    assert(attach1);
+    (void)attach1;
     // Duplicate attachment fails
-    assert(!cpu.attachTimer(&timer));
+    bool attach2 = !cpu.attachTimer(&timer);
+    assert(attach2);
+    (void)attach2;
 
-    assert(cpu.detachTimer(&timer));
+    bool detach1 = cpu.detachTimer(&timer);
+    assert(detach1);
+    (void)detach1;
     // Detaching unattached fails
-    assert(!cpu.detachTimer(&timer));
+    bool detach2 = !cpu.detachTimer(&timer);
+    assert(detach2);
+    (void)detach2;
 
     std::cout << "[PASS] test_cpu_timer_attachment_removal\n";
 }

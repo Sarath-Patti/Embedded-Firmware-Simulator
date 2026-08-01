@@ -165,7 +165,9 @@ void test_monitor_output() {
     Monitor monitor(nullptr, nullptr, &bus, nullptr, nullptr, nullptr, &uart);
     std::ostringstream ss;
 
-    assert(monitor.executeCommand("uart", ss));
+    bool exec_ok = monitor.executeCommand("uart", ss);
+    assert(exec_ok);
+    (void)exec_ok;
     std::string out = ss.str();
 
     assert(out.find("UART") != std::string::npos);

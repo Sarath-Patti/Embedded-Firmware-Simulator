@@ -100,7 +100,9 @@ void test_monitor_clock_output() {
     Monitor monitor(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &clock);
     std::ostringstream ss;
 
-    assert(monitor.executeCommand("clock", ss));
+    bool exec_ok = monitor.executeCommand("clock", ss);
+    assert(exec_ok);
+    (void)exec_ok;
     std::string out = ss.str();
 
     assert(out.find("Clock") != std::string::npos);

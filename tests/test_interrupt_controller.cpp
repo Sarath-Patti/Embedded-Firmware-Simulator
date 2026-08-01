@@ -14,13 +14,19 @@ void test_interrupt_registration() {
     InterruptController ic(bus, 0x40002000);
 
     assert(!ic.isRegistered(1));
-    assert(ic.registerInterrupt(1));
+    bool reg_ok = ic.registerInterrupt(1);
+    assert(reg_ok);
+    (void)reg_ok;
     assert(ic.isRegistered(1));
 
     // Duplicate registration fails
-    assert(!ic.registerInterrupt(1));
+    bool dup_fail = !ic.registerInterrupt(1);
+    assert(dup_fail);
+    (void)dup_fail;
 
-    assert(ic.unregisterInterrupt(1));
+    bool unreg_ok = ic.unregisterInterrupt(1);
+    assert(unreg_ok);
+    (void)unreg_ok;
     assert(!ic.isRegistered(1));
 
     std::cout << "[PASS] test_interrupt_registration\n";
@@ -94,16 +100,22 @@ void test_handler_registration() {
     ic.registerInterrupt(6);
     bool called = false;
 
-    assert(ic.registerHandler(6, [&]() { called = true; }));
+    bool handler_ok = ic.registerHandler(6, [&]() { called = true; });
+    assert(handler_ok);
+    (void)handler_ok;
     ic.enable(6);
     ic.trigger(6);
 
-    assert(ic.dispatch());
+    bool dispatch_ok = ic.dispatch();
+    assert(dispatch_ok);
+    (void)dispatch_ok;
     assert(called);
     (void)called;
 
     // Unregister handler
-    assert(ic.unregisterHandler(6));
+    bool unhandler_ok = ic.unregisterHandler(6);
+    assert(unhandler_ok);
+    (void)unhandler_ok;
 
     std::cout << "[PASS] test_handler_registration\n";
 }
@@ -124,7 +136,9 @@ void test_dispatch() {
     ic.trigger(7);
     assert(ic.pending(7));
 
-    assert(ic.dispatch());
+    bool dispatch_ok = ic.dispatch();
+    assert(dispatch_ok);
+    (void)dispatch_ok;
     assert(count == 1);
     assert(!ic.pending(7)); // Cleared after dispatch
 
@@ -154,12 +168,16 @@ void test_priority_selection() {
     ic.trigger(2);
 
     // First dispatch should pick ID 2 (higher priority 5)
-    assert(ic.dispatch());
+    bool dispatch1_ok = ic.dispatch();
+    assert(dispatch1_ok);
+    (void)dispatch1_ok;
     assert(execution_order.size() == 1);
     assert(execution_order[0] == 2);
 
     // Second dispatch should pick ID 1 (priority 10)
-    assert(ic.dispatch());
+    bool dispatch2_ok = ic.dispatch();
+    assert(dispatch2_ok);
+    (void)dispatch2_ok;
     assert(execution_order.size() == 2);
     assert(execution_order[1] == 1);
 
@@ -191,7 +209,9 @@ void test_timer_generated_interrupt() {
     assert(ic.pending(TIMER_INT_ID));
     assert(!timer_isr_fired);
 
-    assert(ic.dispatch());
+    bool timer_dispatch_ok = ic.dispatch();
+    assert(timer_dispatch_ok);
+    (void)timer_dispatch_ok;
     assert(timer_isr_fired);
     (void)timer_isr_fired;
     assert(!ic.pending(TIMER_INT_ID));

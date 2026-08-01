@@ -70,8 +70,12 @@ void test_peripheral_registration() {
     SystemBus bus;
     bus.attachGPIO(&gpio);
     bus.attachUART(&uart);
-    assert(bus.attachTimer(&timer1));
-    assert(bus.attachTimer(&timer2));
+    bool attach1_ok = bus.attachTimer(&timer1);
+    assert(attach1_ok);
+    (void)attach1_ok;
+    bool attach2_ok = bus.attachTimer(&timer2);
+    assert(attach2_ok);
+    (void)attach2_ok;
 
     assert(bus.gpio() == &gpio);
     assert(bus.uart() == &uart);
@@ -84,7 +88,9 @@ void test_peripheral_registration() {
     assert(timer1.counter() == 1);
 
     // Detach timer
-    assert(bus.detachTimer(&timer1));
+    bool detach1_ok = bus.detachTimer(&timer1);
+    assert(detach1_ok);
+    (void)detach1_ok;
     assert(bus.timers().size() == 1);
 
     std::cout << "[PASS] test_peripheral_registration\n";
@@ -117,17 +123,29 @@ void test_invalid_access() {
     SystemBus bus;
 
     // Attach null timer
-    assert(!bus.attachTimer(nullptr));
+    bool null_attach = !bus.attachTimer(nullptr);
+    assert(null_attach);
+    (void)null_attach;
 
     // Detach null / non-attached timer
     MMIOBus mmioBus;
     Timer timer(mmioBus, 0x40001000);
-    assert(!bus.detachTimer(nullptr));
-    assert(!bus.detachTimer(&timer));
+    bool null_detach = !bus.detachTimer(nullptr);
+    assert(null_detach);
+    (void)null_detach;
+
+    bool unattached_detach = !bus.detachTimer(&timer);
+    assert(unattached_detach);
+    (void)unattached_detach;
 
     // Duplicate attach timer
-    assert(bus.attachTimer(&timer));
-    assert(!bus.attachTimer(&timer));
+    bool attach_first = bus.attachTimer(&timer);
+    assert(attach_first);
+    (void)attach_first;
+
+    bool dup_attach = !bus.attachTimer(&timer);
+    assert(dup_attach);
+    (void)dup_attach;
 
     // Tick timers when empty
     bus.tickTimers();

@@ -6,7 +6,7 @@ namespace efs::firmware {
 /// Abstract base class defining the firmware application lifecycle interface.
 class Firmware {
 public:
-    virtual ~Firmware() = default;
+    virtual ~Firmware();
 
     /// Invoked once when the CPU starts execution.
     virtual void initialize() = 0;
