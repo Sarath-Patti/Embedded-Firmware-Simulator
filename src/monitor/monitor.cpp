@@ -22,7 +22,7 @@ std::string_view trim(std::string_view s) {
 std::string toLower(std::string_view s) {
     std::string result(s);
     std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
-        return std::tolower(c);
+        return static_cast<char>(std::tolower(c));
     });
     return result;
 }

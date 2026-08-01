@@ -25,7 +25,7 @@ Timer::Timer(mmio::MMIOBus& bus, common::Address baseAddress)
 }
 
 Timer::~Timer() {
-    cancelScheduledCompareEvent();
+    cancelScheduledEvent();
     m_bus.unregisterRegister(ctrlAddress());
     m_bus.unregisterRegister(countAddress());
     m_bus.unregisterRegister(compareAddress());
@@ -39,24 +39,24 @@ void Timer::start() {
     if (m_clock != nullptr) {
         m_lastClockCycles = m_clock->cycles();
     }
-    updateScheduledCompareEvent();
+    updateScheduledEvent();
 }
 
 void Timer::stop() {
     common::DWord ctrl = m_ctrlRegister->read();
     ctrl &= ~CTRL_ENABLE_BIT;
     m_ctrlRegister->write(ctrl);
-    cancelScheduledCompareEvent();
+    cancelScheduledEvent();
 }
 
 void Timer::reset() {
-    cancelScheduledCompareEvent();
+    cancelScheduledEvent();
     m_countRegister->write(0);
     m_statusRegister->write(0);
     if (m_clock != nullptr) {
         m_lastClockCycles = m_clock->cycles();
     }
-    updateScheduledCompareEvent();
+    updateScheduledEvent();
 }
 
 void Timer::attachInterruptController(kernel::InterruptController* controller, std::uint8_t interruptId) {
@@ -87,11 +87,11 @@ system::clock::SimulationClock* Timer::clock() const noexcept {
 
 void Timer::attachScheduler(system::scheduler::EventScheduler* scheduler) noexcept {
     m_scheduler = scheduler;
-    updateScheduledCompareEvent();
+    updateScheduledEvent();
 }
 
 void Timer::detachScheduler() noexcept {
-    cancelScheduledCompareEvent();
+    cancelScheduledEvent();
     m_scheduler = nullptr;
 }
 
@@ -99,8 +99,8 @@ system::scheduler::EventScheduler* Timer::scheduler() const noexcept {
     return m_scheduler;
 }
 
-void Timer::updateScheduledCompareEvent() {
-    cancelScheduledCompareEvent();
+void Timer::updateScheduledEvent() {
+    cancelScheduledEvent();
 
     if (!running() || m_scheduler == nullptr) {
         return;
@@ -117,15 +117,15 @@ void Timer::updateScheduledCompareEvent() {
     common::QWord currentCycle = (m_clock != nullptr) ? m_clock->cycles() : 0;
     common::QWord targetCycle = currentCycle + delta;
 
-    m_compareEventId = m_scheduler->schedule([this]() {
+    m_scheduledEventId = m_scheduler->schedule([this]() {
         handleCompareMatch();
     }, targetCycle, "Timer Compare Match");
 }
 
-void Timer::cancelScheduledCompareEvent() {
-    if (m_compareEventId != 0 && m_scheduler != nullptr) {
-        m_scheduler->cancel(m_compareEventId);
-        m_compareEventId = 0;
+void Timer::cancelScheduledEvent() {
+    if (m_scheduledEventId != 0 && m_scheduler != nullptr) {
+        m_scheduler->cancel(m_scheduledEventId);
+        m_scheduledEventId = 0;
     }
 }
 
@@ -173,7 +173,7 @@ void Timer::tick() {
 
 void Timer::setCompare(common::DWord value) {
     m_compareRegister->write(value);
-    updateScheduledCompareEvent();
+    updateScheduledEvent();
 }
 
 common::DWord Timer::compare() const noexcept {
@@ -190,6 +190,40 @@ bool Timer::running() const noexcept {
 
 bool Timer::hasMatch() const noexcept {
     return (m_statusRegister->read() & STATUS_MATCH_BIT) != 0;
+}
+
+void Timer::clearMatch() {
+    common::DWord status = m_statusRegister->read();
+    status &= ~STATUS_MATCH_BIT;
+    m_statusRegister->write(status);
+}
+
+void Timer::setInterruptEnabled(bool enable) {
+    common::DWord ctrl = m_ctrlRegister->read();
+    if (enable) {
+        ctrl |= CTRL_INT_ENABLE_BIT;
+    } else {
+        ctrl &= ~CTRL_INT_ENABLE_BIT;
+    }
+    m_ctrlRegister->write(ctrl);
+}
+
+bool Timer::interruptEnabled() const noexcept {
+    return (m_ctrlRegister->read() & CTRL_INT_ENABLE_BIT) != 0;
+}
+
+void Timer::setAutoReset(bool enable) {
+    common::DWord ctrl = m_ctrlRegister->read();
+    if (enable) {
+        ctrl |= CTRL_AUTO_RESET_BIT;
+    } else {
+        ctrl &= ~CTRL_AUTO_RESET_BIT;
+    }
+    m_ctrlRegister->write(ctrl);
+}
+
+bool Timer::autoReset() const noexcept {
+    return (m_ctrlRegister->read() & CTRL_AUTO_RESET_BIT) != 0;
 }
 
 common::Address Timer::baseAddress() const noexcept {

@@ -21,6 +21,7 @@ enum class PinState {
 
 constexpr common::Size MAX_PINS = 32;
 
+/// 32-pin GPIO peripheral modeling DIR, OUT, and IN registers over MMIO.
 class GPIO {
 public:
     static constexpr common::Address DIR_OFFSET = 0x00;
@@ -35,16 +36,31 @@ public:
     GPIO(GPIO&&) = delete;
     GPIO& operator=(GPIO&&) = delete;
 
+    /// Configures pin direction (Input or Output).
     void configurePin(std::uint8_t pin, PinDirection direction);
+
+    /// Writes PinState (High/Low) to output pin.
     void writePin(std::uint8_t pin, PinState state);
+
+    /// Reads PinState (High/Low) of specified pin.
     [[nodiscard]] PinState readPin(std::uint8_t pin) const;
+
+    /// Toggles the state of specified output pin.
     void togglePin(std::uint8_t pin);
 
+    /// Simulates external signal input on a pin.
     void setExternalInput(std::uint8_t pin, PinState state);
 
+    /// Returns MMIO base address.
     [[nodiscard]] common::Address baseAddress() const noexcept;
+
+    /// Returns address of DIR register.
     [[nodiscard]] common::Address dirAddress() const noexcept;
+
+    /// Returns address of OUT register.
     [[nodiscard]] common::Address outAddress() const noexcept;
+
+    /// Returns address of IN register.
     [[nodiscard]] common::Address inAddress() const noexcept;
 
 private:
