@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 1.4.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 1.5.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,6 +14,9 @@ add_library(embedded_firmware_simulator STATIC
     src/drivers/gpio/gpio.cpp
     src/drivers/timer/timer.cpp
     src/drivers/uart/uart.cpp
+    src/hal/gpio_hal.cpp
+    src/hal/timer_hal.cpp
+    src/hal/uart_hal.cpp
     src/kernel/interrupt_controller.cpp
     src/system/system_bus.cpp
     src/system/clock/simulation_clock.cpp
@@ -48,16 +51,21 @@ target_link_libraries(uart_demo PRIVATE embedded_firmware_simulator)
 add_executable(event_scheduler_demo examples/event_scheduler_demo.cpp)
 target_link_libraries(event_scheduler_demo PRIVATE embedded_firmware_simulator)
 
+add_executable(hal_demo examples/hal_demo.cpp)
+target_link_libraries(hal_demo PRIVATE embedded_firmware_simulator)
+
 if(MSVC)
     target_compile_options(simulator_demo PRIVATE /W4)
     target_compile_options(firmware_demo PRIVATE /W4)
     target_compile_options(uart_demo PRIVATE /W4)
     target_compile_options(event_scheduler_demo PRIVATE /W4)
+    target_compile_options(hal_demo PRIVATE /W4)
 else()
     target_compile_options(simulator_demo PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(firmware_demo PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(uart_demo PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(event_scheduler_demo PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(hal_demo PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 # Testing Configuration
@@ -87,3 +95,4 @@ efs_add_test(uart_tests tests/test_uart.cpp UARTTests)
 efs_add_test(system_tests tests/test_system_bus.cpp SystemTests)
 efs_add_test(clock_tests tests/test_clock.cpp ClockTests)
 efs_add_test(scheduler_tests tests/test_scheduler.cpp SchedulerTests)
+efs_add_test(hal_tests tests/test_hal.cpp HALTests)

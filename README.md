@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator
 
-[![Version](https://img.shields.io/badge/version-v1.4.0-blue.svg)](include/common/version.hpp)
+[![Version](https://img.shields.io/badge/version-v1.5.0-blue.svg)](include/common/version.hpp)
 [![Standard](https://img.shields.io/badge/c%2B%2B-20-green.svg)](CMakeLists.txt)
 [![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
 
@@ -12,8 +12,10 @@ A production-quality, modular C++20 simulator architecture for embedded firmware
 
 - [Overview](#overview)
 - [Motivation](#motivation)
-- [Key Features (v1.4)](#key-features-v14)
+- [Key Features (v1.5)](#key-features-v15)
 - [System Architecture](#system-architecture)
+- [Hardware Abstraction Layer (HAL)](#hardware-abstraction-layer-hal)
+- [Firmware Development Model](#firmware-development-model)
 - [Event Scheduler Architecture](#event-scheduler-architecture)
 - [Simulation Clock Architecture](#simulation-clock-architecture)
 - [System Bus Architecture](#system-bus-architecture)
@@ -48,8 +50,10 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 
 ---
 
-## Key Features (v1.4)
+## Key Features (v1.5)
 
+- **Hardware Abstraction Layer (`efs::hal`)**: Provides clean, stable `GPIOHAL`, `TimerHAL`, and `UARTHAL` abstractions hiding raw peripheral implementation details from firmware.
+- **Firmware Development Model**: Standardized application lifecycle (`initialize`, `execute`, `shutdown`) operating exclusively via HAL interfaces without direct peripheral coupling.
 - **Event Scheduler (`efs::system::scheduler::EventScheduler`)**: Deterministic cycle-driven event scheduler for executing callbacks at specific simulation times with strict FIFO ordering for simultaneous events.
 - **Simulation Clock (`efs::system::clock::SimulationClock`)**: Centralized deterministic timing source maintaining simulated cycle counts and calculating elapsed nanoseconds, microseconds, and milliseconds.
 - **System Bus Architecture (`efs::system::SystemBus`)**: Centralized communication layer interconnecting CPU, Memory, MMIO Bus, Interrupt Controller, Simulation Clock, Event Scheduler, and Hardware Peripherals.
@@ -80,12 +84,12 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
                                     │
                                     ▼
                        ┌─────────────────────────┐
-                       │    Simulation Clock     │
+                       │        Firmware         │
                        └────────────┬────────────┘
                                     │
                                     ▼
                        ┌─────────────────────────┐
-                       │     Event Scheduler     │
+                       │Hardware Abstraction Layer│ (GPIOHAL, TimerHAL, UARTHAL)
                        └────────────┬────────────┘
                                     │
                                     ▼
@@ -108,6 +112,67 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 
 ---
 
+## Hardware Abstraction Layer (HAL)
+
+The Hardware Abstraction Layer (`efs::hal`) provides a high-level, production-grade interface between firmware and hardware peripherals:
+
+```text
+                Firmware Application
+                         │
+                         ▼
+             Hardware Abstraction Layer
+        ┌────────────────┼────────────────┐
+        ▼                ▼                ▼
+     GPIOHAL          TimerHAL         UARTHAL
+  configureOutput()    start()        writeByte()
+  configureInput()     stop()         readByte()
+  write()              reset()        hasData()
+  read()               counter()      setBaudRate()
+  toggle()             setCompare()
+```
+
+- **`GPIOHAL`**: Wraps GPIO hardware pin configuration, reading, writing, and toggling.
+- **`TimerHAL`**: Wraps hardware timer controls, counter querying, and compare match configuration.
+- **`UARTHAL`**: Wraps serial byte transmission, reception, status polling, and baud rate configuration.
+
+---
+
+## Firmware Development Model
+
+Firmware applications inherit from `efs::firmware::Firmware` and interact with peripherals **exclusively** through HAL abstractions:
+
+```cpp
+#include "hal/hal.hpp"
+#include "firmware/firmware.hpp"
+
+class UserFirmware : public efs::firmware::Firmware {
+public:
+    UserFirmware(efs::hal::GPIOHAL& gpio, efs::hal::UARTHAL& uart)
+        : m_gpio(gpio), m_uart(uart) {}
+
+    void initialize() override {
+        m_gpio.configureOutput(13);
+        m_uart.setBaudRate(115200);
+        m_uart.enable();
+    }
+
+    void execute() override {
+        m_gpio.toggle(13);
+        m_uart.writeByte('A');
+    }
+
+    void shutdown() override {
+        m_gpio.write(13, false);
+    }
+
+private:
+    efs::hal::GPIOHAL& m_gpio;
+    efs::hal::UARTHAL& m_uart;
+};
+```
+
+---
+
 ## Event Scheduler Architecture
 
 The `EventScheduler` (`efs::system::scheduler::EventScheduler`) provides a deterministic mechanism to schedule and execute callbacks at precise simulation cycles:
@@ -125,17 +190,6 @@ The `EventScheduler` (`efs::system::scheduler::EventScheduler`) provides a deter
 - **Scheduling & Cancellation**: `schedule(callback, cycle, description)` returns a unique `EventId`. Events can be dynamically canceled via `cancel(eventId)`.
 - **FIFO Execution Order**: Multiple events scheduled for the same simulation cycle execute in strict FIFO order (sorted by insertion ID).
 - **Timer Integration**: Hardware Timers schedule compare match callbacks with the `EventScheduler` instead of polling every cycle.
-
-### Example Usage
-
-```cpp
-efs::system::SystemBus systemBus(&memory, &bus, &ic);
-
-// Schedule a custom callback for cycle 500
-systemBus.scheduler().schedule([]() {
-    std::cout << "Custom callback fired at cycle 500!\n";
-}, 500, "Custom Callback");
-```
 
 ---
 
@@ -178,20 +232,6 @@ The UART (Universal Asynchronous Receiver-Transmitter) peripheral provides seria
               TX FIFO        RX FIFO
 ```
 
-### Register Map
-
-| Register | Offset | Access | Description | Bit Fields |
-| :--- | :--- | :--- | :--- | :--- |
-| `DATA` | `0x00` | R/W | Transmit & Receive Data Buffer | `[7:0] Data Byte` |
-| `STATUS` | `0x04` | R | Peripheral Status Flags | `Bit 0: TX Empty`, `Bit 1: RX Available`, `Bit 2: Enabled` |
-| `CONTROL`| `0x08` | R/W | Peripheral Control | `Bit 0: Enable` |
-| `BAUD` | `0x0C` | R/W | Baud Rate Configuration | `[31:0] Baud Rate (e.g. 115200)` |
-
-### FIFO Design
-
-- **TX FIFO (`m_txFifo`)**: STL `std::queue` storing outgoing bytes enqueued via `writeByte()`. Setting `STATUS_TX_EMPTY_BIT` when empty.
-- **RX FIFO (`m_rxFifo`)**: STL `std::queue` storing incoming bytes enqueued via `pushReceivedByte()` and dequeued via `readByte()`. Setting `STATUS_RX_AVAIL_BIT` when non-empty.
-
 ---
 
 ## Repository Layout
@@ -203,6 +243,7 @@ Embedded-Firmware-Simulator/
 │   ├── cpu/                  # CPU cycle engine & RegisterFile (cpu/registers/)
 │   ├── drivers/              # Hardware peripheral drivers (gpio/, timer/, uart/)
 │   ├── firmware/             # Firmware interface & BasicFirmware
+│   ├── hal/                  # Hardware Abstraction Layer (gpio_hal, timer_hal, uart_hal)
 │   ├── kernel/               # Priority Interrupt Controller
 │   ├── memory/               # Byte-addressable Memory subsystem
 │   ├── mmio/                 # Memory-Mapped I/O Register & MMIOBus
@@ -213,14 +254,15 @@ Embedded-Firmware-Simulator/
 │   ├── cpu/
 │   ├── drivers/
 │   ├── firmware/
+│   ├── hal/
 │   ├── kernel/
 │   ├── memory/
 │   ├── mmio/
 │   ├── monitor/
 │   ├── system/
 │   └── main.cpp              # Interactive simulator demo entry point
-├── examples/                 # Sample applications (firmware_demo.cpp, uart_demo.cpp, event_scheduler_demo.cpp)
-├── tests/                    # CTest unit test suite (13 test suites)
+├── examples/                 # Sample applications (firmware_demo.cpp, uart_demo.cpp, event_scheduler_demo.cpp, hal_demo.cpp)
+├── tests/                    # CTest unit test suite (14 test suites)
 ├── CMakeLists.txt            # CMake build system configuration
 └── README.md                 # Project documentation
 ```
@@ -251,26 +293,25 @@ cmake --build .
 ## Running the Simulator
 
 ### Interactive Simulator Monitor Demo
-Run the main interactive monitor executable to control and observe the simulator in real time:
 
 ```bash
 ./simulator_demo
 ```
 
-### Example Applications
-Run standalone simulation demos showcasing firmware execution, UART serial communication, or event scheduling:
+### Example Demos
 
 ```bash
 ./firmware_demo
 ./uart_demo
 ./event_scheduler_demo
+./hal_demo
 ```
 
 ---
 
 ## Running Tests
 
-Execute the full CTest unit test suite covering all 13 project test modules:
+Execute the full CTest unit test suite covering all 14 project test modules:
 
 ```bash
 ctest --output-on-failure
@@ -282,50 +323,13 @@ ctest --output-on-failure
 
 The `Monitor` subsystem provides a non-blocking interactive command-line interface to control simulation execution and inspect internal processor and peripheral state.
 
-### Supported Commands
-
-| Command | Syntax | Description |
-| :--- | :--- | :--- |
-| `help` | `help` | Display all supported commands. |
-| `exit` | `exit` | Exit the interactive monitor session. |
-| `reset` | `reset` | Reset the CPU simulation cycle counter and register file. |
-| `step` | `step` | Execute exactly one simulation cycle. |
-| `run` | `run <cycles>` | Execute `N` simulation cycles (where `N` is a positive integer). |
-| `regs` | `regs` | Display PC, SP, Status Register, and R0–R15 values. |
-| `gpio` | `gpio` | Display GPIO pin directions and output/input states. |
-| `timer` | `timer` | Display timer state (running status, counter, compare, match flag). |
-| `interrupts` | `interrupts` | Display interrupt controller status (enabled, pending, priority levels). |
-| `memory` | `memory <addr> <cnt>` | Display `<cnt>` memory bytes starting at `<addr>` in hex. |
-| `mmio` | `mmio` | Display all registered MMIO addresses and their current values. |
-| `uart` | `uart` | Display UART peripheral state (enabled status, baud, FIFO queue sizes, status flags). |
-| `clock` | `clock` | Display Simulation Clock frequency, total cycles, and elapsed time. |
-| `events` | `events` | Display pending scheduled events (ID, target cycle, description). |
-
-### Example Session
-
-```text
-Embedded Firmware Simulator initialized.
-Embedded Firmware Simulator Monitor (v1.0)
-Type 'help' for a list of commands.
-> events
-Pending Events
-----------------------------
-ID   Cycle   Description
-
-1    500     Timer Compare
-
-2    900     Firmware Callback
-> exit
-Exiting monitor.
-```
-
 ---
 
 ## Project Statistics
 
-- **Core Subsystems**: Event Scheduler, Simulation Clock, System Bus, Memory, MMIO, GPIO, Timer, UART, Interrupt Controller, CPU, Register File, Firmware, Interactive Monitor
+- **Core Subsystems**: HAL (`GPIOHAL`, `TimerHAL`, `UARTHAL`), Event Scheduler, Simulation Clock, System Bus, Memory, MMIO, GPIO, Timer, UART, Interrupt Controller, CPU, Register File, Firmware, Interactive Monitor
 - **Peripherals Modeled**: 3 (`GPIO`, `Hardware Timer`, `UART Serial Interface`)
-- **Unit Test Suites**: 13 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `RegisterTests`, `MonitorTests`, `UARTTests`, `SystemTests`, `ClockTests`, `SchedulerTests`)
+- **Unit Test Suites**: 14 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `RegisterTests`, `MonitorTests`, `UARTTests`, `SystemTests`, `ClockTests`, `SchedulerTests`, `HALTests`)
 - **Language Standard**: Modern C++20
 
 ---
@@ -346,13 +350,14 @@ Exiting monitor.
 - [x] **v1.2 – System Bus**: Central communication bus interconnecting CPU, Memory, MMIO, Interrupt Controller, and peripherals.
 - [x] **v1.3 – Simulation Clock**: Centralized deterministic timing source for simulation cycles and timing calculations.
 - [x] **v1.4 – Event Scheduler**: Deterministic cycle-driven event scheduler for callback execution and peripheral timing.
+- [x] **v1.5 – Hardware Abstraction Layer**: Clean, stable `GPIOHAL`, `TimerHAL`, and `UARTHAL` abstractions for firmware peripheral control.
 
 ---
 
 ## Future Work
 
-- **v1.5 – Firmware Binary Loader**: ELF and Intel HEX firmware binary image loader.
-- **v1.6 – Advanced Monitor Debugging**: Breakpoints, watchpoints, and symbol table resolution.
+- **v1.6 – Firmware Binary Loader**: ELF and Intel HEX firmware binary image loader.
+- **v1.7 – Advanced Monitor Debugging**: Breakpoints, watchpoints, and symbol table resolution.
 
 ---
 

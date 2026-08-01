@@ -1,9 +1,14 @@
 #include "firmware/basic_firmware.hpp"
+#include "drivers/gpio/gpio.hpp"
 
 namespace efs::firmware {
 
+BasicFirmware::BasicFirmware(hal::GPIOHAL& gpioHAL, std::uint8_t pin, common::Size toggleInterval)
+    : m_gpioHAL(gpioHAL), m_pin(pin), m_toggleInterval(toggleInterval == 0 ? 1 : toggleInterval) {
+}
+
 BasicFirmware::BasicFirmware(drivers::gpio::GPIO& gpio, std::uint8_t pin, common::Size toggleInterval)
-    : m_gpio(gpio), m_pin(pin), m_toggleInterval(toggleInterval == 0 ? 1 : toggleInterval) {
+    : m_gpioHAL(gpio), m_pin(pin), m_toggleInterval(toggleInterval == 0 ? 1 : toggleInterval) {
 }
 
 void BasicFirmware::initialize() {
@@ -11,8 +16,8 @@ void BasicFirmware::initialize() {
     m_shutdown = false;
     m_cycleCounter = 0;
     m_executionCount = 0;
-    m_gpio.configurePin(m_pin, drivers::gpio::PinDirection::Output);
-    m_gpio.writePin(m_pin, drivers::gpio::PinState::Low);
+    m_gpioHAL.configureOutput(m_pin);
+    m_gpioHAL.write(m_pin, false);
 }
 
 void BasicFirmware::execute() {
@@ -23,14 +28,14 @@ void BasicFirmware::execute() {
     m_cycleCounter++;
 
     if (m_cycleCounter >= m_toggleInterval) {
-        m_gpio.togglePin(m_pin);
+        m_gpioHAL.toggle(m_pin);
         m_cycleCounter = 0;
     }
 }
 
 void BasicFirmware::shutdown() {
     if (m_initialized && !m_shutdown) {
-        m_gpio.writePin(m_pin, drivers::gpio::PinState::Low);
+        m_gpioHAL.write(m_pin, false);
         m_shutdown = true;
     }
 }
