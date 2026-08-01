@@ -1,6 +1,7 @@
 #include "drivers/gpio/gpio.hpp"
 #include "mmio/mmio_bus.hpp"
 #include <cassert>
+#include <cstdint>
 #include <iostream>
 #include <stdexcept>
 
@@ -27,10 +28,11 @@ void test_pin_configuration() {
     MMIOBus bus;
     GPIO gpio(bus, 0x40000000);
 
-    gpio.configurePin(5, PinDirection::Output);
-    assert(bus.read(0x40000000) == (1U << 5));
+    constexpr std::uint8_t PIN5 = 5;
+    gpio.configurePin(PIN5, PinDirection::Output);
+    assert(bus.read(0x40000000) == (1U << PIN5));
 
-    gpio.configurePin(5, PinDirection::Input);
+    gpio.configurePin(PIN5, PinDirection::Input);
     assert(bus.read(0x40000000) == 0);
 
     std::cout << "[PASS] test_pin_configuration\n";
@@ -40,15 +42,16 @@ void test_write_read() {
     MMIOBus bus;
     GPIO gpio(bus, 0x40000000);
 
-    gpio.configurePin(3, PinDirection::Output);
-    gpio.writePin(3, PinState::High);
+    constexpr std::uint8_t PIN3 = 3;
+    gpio.configurePin(PIN3, PinDirection::Output);
+    gpio.writePin(PIN3, PinState::High);
 
-    assert(gpio.readPin(3) == PinState::High);
-    assert(bus.read(0x40000004) == (1U << 3));
-    assert(bus.read(0x40000008) == (1U << 3));
+    assert(gpio.readPin(PIN3) == PinState::High);
+    assert(bus.read(0x40000004) == (1U << PIN3));
+    assert(bus.read(0x40000008) == (1U << PIN3));
 
-    gpio.writePin(3, PinState::Low);
-    assert(gpio.readPin(3) == PinState::Low);
+    gpio.writePin(PIN3, PinState::Low);
+    assert(gpio.readPin(PIN3) == PinState::Low);
     assert(bus.read(0x40000004) == 0);
     assert(bus.read(0x40000008) == 0);
 
@@ -59,14 +62,15 @@ void test_toggle() {
     MMIOBus bus;
     GPIO gpio(bus, 0x40000000);
 
-    gpio.configurePin(7, PinDirection::Output);
-    gpio.writePin(7, PinState::Low);
+    constexpr std::uint8_t PIN7 = 7;
+    gpio.configurePin(PIN7, PinDirection::Output);
+    gpio.writePin(PIN7, PinState::Low);
 
-    gpio.togglePin(7);
-    assert(gpio.readPin(7) == PinState::High);
+    gpio.togglePin(PIN7);
+    assert(gpio.readPin(PIN7) == PinState::High);
 
-    gpio.togglePin(7);
-    assert(gpio.readPin(7) == PinState::Low);
+    gpio.togglePin(PIN7);
+    assert(gpio.readPin(PIN7) == PinState::Low);
 
     std::cout << "[PASS] test_toggle\n";
 }
@@ -100,10 +104,11 @@ void test_invalid_direction() {
     MMIOBus bus;
     GPIO gpio(bus, 0x40000000);
 
+    constexpr std::uint8_t PIN2 = 2;
     // Pin 2 is input by default
     bool write_threw = false;
     try {
-        gpio.writePin(2, PinState::High);
+        gpio.writePin(PIN2, PinState::High);
     } catch (const std::logic_error&) {
         write_threw = true;
     }
@@ -112,7 +117,7 @@ void test_invalid_direction() {
 
     bool toggle_threw = false;
     try {
-        gpio.togglePin(2);
+        gpio.togglePin(PIN2);
     } catch (const std::logic_error&) {
         toggle_threw = true;
     }
@@ -132,7 +137,9 @@ void test_mmio_register_interaction() {
     bus.write(0x40000004, 0x00000001);
     bus.write(0x40000008, 0x00000001);
 
-    assert(gpio.readPin(0) == PinState::High);
+    constexpr std::uint8_t PIN0 = 0;
+    assert(gpio.readPin(PIN0) == PinState::High);
+    (void)PIN0;
 
     std::cout << "[PASS] test_mmio_register_interaction\n";
 }

@@ -5,6 +5,7 @@
 #include "mmio/mmio_bus.hpp"
 #include "firmware/basic_firmware.hpp"
 #include <cassert>
+#include <cstdint>
 #include <iostream>
 
 using namespace efs::hal;
@@ -21,24 +22,32 @@ void test_gpio_hal() {
 
     assert(hal.isAttached());
 
-    hal.configureOutput(3);
-    assert(!hal.read(3));
+    constexpr std::uint8_t PIN3 = 3;
+    constexpr std::uint8_t PIN4 = 4;
+    constexpr std::uint8_t PIN1 = 1;
 
-    hal.write(3, true);
-    assert(hal.read(3));
+    hal.configureOutput(PIN3);
+    assert(!hal.read(PIN3));
 
-    hal.toggle(3);
-    assert(!hal.read(3));
+    hal.write(PIN3, true);
+    assert(hal.read(PIN3));
 
-    hal.configureInput(4);
-    gpio.setExternalInput(4, PinState::High);
-    assert(hal.read(4));
+    hal.toggle(PIN3);
+    assert(!hal.read(PIN3));
+
+    hal.configureInput(PIN4);
+    gpio.setExternalInput(PIN4, PinState::High);
+    assert(hal.read(PIN4));
 
     // Detached check
     GPIOHAL unattached;
     assert(!unattached.isAttached());
-    unattached.configureOutput(1);
-    assert(!unattached.read(1));
+    unattached.configureOutput(PIN1);
+    assert(!unattached.read(PIN1));
+
+    (void)PIN3;
+    (void)PIN4;
+    (void)PIN1;
 
     std::cout << "[PASS] test_gpio_hal\n";
 }
@@ -111,27 +120,30 @@ void test_firmware_using_hal() {
     MMIOBus bus;
     GPIO gpio(bus, 0x40000000);
     GPIOHAL hal(gpio);
-    BasicFirmware fw(hal, 1, 2);
+    constexpr std::uint8_t PIN1 = 1;
+    constexpr efs::common::Size TOGGLE_INTERVAL = 2;
+    BasicFirmware fw(hal, PIN1, TOGGLE_INTERVAL);
 
     fw.initialize();
     assert(fw.isInitialized());
-    assert(!hal.read(1));
+    assert(!hal.read(PIN1));
 
     fw.execute(); // cycle 1
-    assert(!hal.read(1));
+    assert(!hal.read(PIN1));
 
     fw.execute(); // cycle 2 -> toggles
-    assert(hal.read(1));
+    assert(hal.read(PIN1));
 
     fw.execute(); // cycle 3
-    assert(hal.read(1));
+    assert(hal.read(PIN1));
 
     fw.execute(); // cycle 4 -> toggles
-    assert(!hal.read(1));
+    assert(!hal.read(PIN1));
 
     fw.shutdown();
     assert(fw.isShutdown());
-    assert(!hal.read(1));
+    assert(!hal.read(PIN1));
+    (void)PIN1;
 
     std::cout << "[PASS] test_firmware_using_hal\n";
 }

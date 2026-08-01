@@ -4,6 +4,7 @@
 #include "drivers/uart/uart.hpp"
 #include "mmio/mmio_bus.hpp"
 #include "firmware/basic_firmware.hpp"
+#include <cstdint>
 #include <iostream>
 
 int main() {
@@ -11,9 +12,13 @@ int main() {
 
     // 1. Setup MMIO Bus & Peripheral Drivers
     efs::mmio::MMIOBus bus;
-    efs::drivers::gpio::GPIO gpio(bus, 0x40000000);
-    efs::drivers::timer::Timer timer(bus, 0x40001000);
-    efs::drivers::uart::UART uart(bus, 0x40003000);
+    constexpr efs::common::Address GPIO_BASE = 0x40000000U;
+    constexpr efs::common::Address TIMER_BASE = 0x40001000U;
+    constexpr efs::common::Address UART_BASE = 0x40003000U;
+
+    efs::drivers::gpio::GPIO gpio(bus, GPIO_BASE);
+    efs::drivers::timer::Timer timer(bus, TIMER_BASE);
+    efs::drivers::uart::UART uart(bus, UART_BASE);
 
     // 2. Instantiate HAL Abstractions wrapping peripheral drivers
     efs::hal::GPIOHAL gpioHAL(gpio);
@@ -22,18 +27,20 @@ int main() {
 
     // 3. Demonstrate GPIO HAL Operations
     std::cout << "\n--- GPIO HAL Demonstration ---\n";
-    gpioHAL.configureOutput(5);
+    constexpr std::uint8_t DEMO_PIN = 5;
+    gpioHAL.configureOutput(DEMO_PIN);
     std::cout << "Configured GPIO Pin 5 as Output.\n";
 
-    gpioHAL.write(5, true);
-    std::cout << "Wrote Pin 5 = High (read back: " << (gpioHAL.read(5) ? "High" : "Low") << ")\n";
+    gpioHAL.write(DEMO_PIN, true);
+    std::cout << "Wrote Pin 5 = High (read back: " << (gpioHAL.read(DEMO_PIN) ? "High" : "Low") << ")\n";
 
-    gpioHAL.toggle(5);
-    std::cout << "Toggled Pin 5 (read back: " << (gpioHAL.read(5) ? "High" : "Low") << ")\n";
+    gpioHAL.toggle(DEMO_PIN);
+    std::cout << "Toggled Pin 5 (read back: " << (gpioHAL.read(DEMO_PIN) ? "High" : "Low") << ")\n";
 
     // 4. Demonstrate Timer HAL Operations
     std::cout << "\n--- Timer HAL Demonstration ---\n";
-    timerHAL.setCompare(100);
+    constexpr efs::common::Size TIMER_COMPARE = 100;
+    timerHAL.setCompare(TIMER_COMPARE);
     timerHAL.start();
     std::cout << "Timer HAL started. Current counter: " << timerHAL.counter() << "\n";
     timerHAL.stop();
@@ -42,7 +49,8 @@ int main() {
 
     // 5. Demonstrate UART HAL Operations
     std::cout << "\n--- UART HAL Demonstration ---\n";
-    uartHAL.setBaudRate(115200);
+    constexpr std::uint32_t BAUD_RATE = 115200;
+    uartHAL.setBaudRate(BAUD_RATE);
     uartHAL.enable();
     std::cout << "UART HAL enabled with baud rate 115200.\n";
 
@@ -62,13 +70,15 @@ int main() {
 
     // 6. Demonstrate Firmware using HAL exclusively
     std::cout << "\n--- Firmware Execution via HAL ---\n";
-    efs::firmware::BasicFirmware firmware(gpioHAL, 2, 2);
+    constexpr std::uint8_t FW_PIN = 2;
+    constexpr efs::common::Size TOGGLE_INTERVAL = 2;
+    efs::firmware::BasicFirmware firmware(gpioHAL, FW_PIN, TOGGLE_INTERVAL);
     firmware.initialize();
     std::cout << "BasicFirmware initialized for Pin 2 via GPIOHAL.\n";
 
     for (int cycle = 0; cycle < 5; ++cycle) {
         firmware.execute();
-        std::cout << "Cycle " << (cycle + 1) << " executed. Pin 2 state: " << (gpioHAL.read(2) ? "High" : "Low") << "\n";
+        std::cout << "Cycle " << (cycle + 1) << " executed. Pin 2 state: " << (gpioHAL.read(FW_PIN) ? "High" : "Low") << "\n";
     }
     firmware.shutdown();
 

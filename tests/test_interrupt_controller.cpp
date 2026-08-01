@@ -2,6 +2,7 @@
 #include "kernel/interrupt_controller.hpp"
 #include "mmio/mmio_bus.hpp"
 #include <cassert>
+#include <cstdint>
 #include <iostream>
 #include <vector>
 
@@ -13,21 +14,22 @@ void test_interrupt_registration() {
     MMIOBus bus;
     InterruptController ic(bus, 0x40002000);
 
-    assert(!ic.isRegistered(1));
-    bool reg_ok = ic.registerInterrupt(1);
+    constexpr std::uint8_t IRQ1 = 1;
+    assert(!ic.isRegistered(IRQ1));
+    bool reg_ok = ic.registerInterrupt(IRQ1);
     assert(reg_ok);
     (void)reg_ok;
-    assert(ic.isRegistered(1));
+    assert(ic.isRegistered(IRQ1));
 
     // Duplicate registration fails
-    bool dup_fail = !ic.registerInterrupt(1);
+    bool dup_fail = !ic.registerInterrupt(IRQ1);
     assert(dup_fail);
     (void)dup_fail;
 
-    bool unreg_ok = ic.unregisterInterrupt(1);
+    bool unreg_ok = ic.unregisterInterrupt(IRQ1);
     assert(unreg_ok);
     (void)unreg_ok;
-    assert(!ic.isRegistered(1));
+    assert(!ic.isRegistered(IRQ1));
 
     std::cout << "[PASS] test_interrupt_registration\n";
 }
@@ -36,16 +38,17 @@ void test_enable_disable() {
     MMIOBus bus;
     InterruptController ic(bus, 0x40002000);
 
-    ic.registerInterrupt(2);
-    assert(!ic.enabled(2));
+    constexpr std::uint8_t IRQ2 = 2;
+    ic.registerInterrupt(IRQ2);
+    assert(!ic.enabled(IRQ2));
 
-    ic.enable(2);
-    assert(ic.enabled(2));
-    assert((bus.read(0x40002000) & (1U << 2)) != 0);
+    ic.enable(IRQ2);
+    assert(ic.enabled(IRQ2));
+    assert((bus.read(0x40002000) & (1U << IRQ2)) != 0);
 
-    ic.disable(2);
-    assert(!ic.enabled(2));
-    assert((bus.read(0x40002000) & (1U << 2)) == 0);
+    ic.disable(IRQ2);
+    assert(!ic.enabled(IRQ2));
+    assert((bus.read(0x40002000) & (1U << IRQ2)) == 0);
 
     std::cout << "[PASS] test_enable_disable\n";
 }
@@ -54,12 +57,13 @@ void test_trigger() {
     MMIOBus bus;
     InterruptController ic(bus, 0x40002000);
 
-    ic.registerInterrupt(3);
-    assert(!ic.pending(3));
+    constexpr std::uint8_t IRQ3 = 3;
+    ic.registerInterrupt(IRQ3);
+    assert(!ic.pending(IRQ3));
 
-    ic.trigger(3);
-    assert(ic.pending(3));
-    assert((bus.read(0x40002004) & (1U << 3)) != 0);
+    ic.trigger(IRQ3);
+    assert(ic.pending(IRQ3));
+    assert((bus.read(0x40002004) & (1U << IRQ3)) != 0);
 
     std::cout << "[PASS] test_trigger\n";
 }
@@ -68,13 +72,14 @@ void test_clear() {
     MMIOBus bus;
     InterruptController ic(bus, 0x40002000);
 
-    ic.registerInterrupt(4);
-    ic.trigger(4);
-    assert(ic.pending(4));
+    constexpr std::uint8_t IRQ4 = 4;
+    ic.registerInterrupt(IRQ4);
+    ic.trigger(IRQ4);
+    assert(ic.pending(IRQ4));
 
-    ic.clear(4);
-    assert(!ic.pending(4));
-    assert((bus.read(0x40002004) & (1U << 4)) == 0);
+    ic.clear(IRQ4);
+    assert(!ic.pending(IRQ4));
+    assert((bus.read(0x40002004) & (1U << IRQ4)) == 0);
 
     std::cout << "[PASS] test_clear\n";
 }
@@ -83,12 +88,13 @@ void test_pending_status() {
     MMIOBus bus;
     InterruptController ic(bus, 0x40002000);
 
-    ic.registerInterrupt(5);
-    assert(!ic.pending(5));
-    ic.trigger(5);
-    assert(ic.pending(5));
-    ic.clear(5);
-    assert(!ic.pending(5));
+    constexpr std::uint8_t IRQ5 = 5;
+    ic.registerInterrupt(IRQ5);
+    assert(!ic.pending(IRQ5));
+    ic.trigger(IRQ5);
+    assert(ic.pending(IRQ5));
+    ic.clear(IRQ5);
+    assert(!ic.pending(IRQ5));
 
     std::cout << "[PASS] test_pending_status\n";
 }
@@ -97,14 +103,15 @@ void test_handler_registration() {
     MMIOBus bus;
     InterruptController ic(bus, 0x40002000);
 
-    ic.registerInterrupt(6);
+    constexpr std::uint8_t IRQ6 = 6;
+    ic.registerInterrupt(IRQ6);
     bool called = false;
 
-    bool handler_ok = ic.registerHandler(6, [&]() { called = true; });
+    bool handler_ok = ic.registerHandler(IRQ6, [&]() { called = true; });
     assert(handler_ok);
     (void)handler_ok;
-    ic.enable(6);
-    ic.trigger(6);
+    ic.enable(IRQ6);
+    ic.trigger(IRQ6);
 
     bool dispatch_ok = ic.dispatch();
     assert(dispatch_ok);
@@ -113,7 +120,7 @@ void test_handler_registration() {
     (void)called;
 
     // Unregister handler
-    bool unhandler_ok = ic.unregisterHandler(6);
+    bool unhandler_ok = ic.unregisterHandler(IRQ6);
     assert(unhandler_ok);
     (void)unhandler_ok;
 
@@ -124,23 +131,24 @@ void test_dispatch() {
     MMIOBus bus;
     InterruptController ic(bus, 0x40002000);
 
-    ic.registerInterrupt(7);
-    ic.enable(7);
+    constexpr std::uint8_t IRQ7 = 7;
+    ic.registerInterrupt(IRQ7);
+    ic.enable(IRQ7);
 
     int count = 0;
-    ic.registerHandler(7, [&]() { count++; });
+    ic.registerHandler(IRQ7, [&]() { count++; });
 
     // No pending interrupt -> dispatch returns false
     assert(!ic.dispatch());
 
-    ic.trigger(7);
-    assert(ic.pending(7));
+    ic.trigger(IRQ7);
+    assert(ic.pending(IRQ7));
 
     bool dispatch_ok = ic.dispatch();
     assert(dispatch_ok);
     (void)dispatch_ok;
     assert(count == 1);
-    assert(!ic.pending(7)); // Cleared after dispatch
+    assert(!ic.pending(IRQ7)); // Cleared after dispatch
 
     std::cout << "[PASS] test_dispatch\n";
 }
@@ -149,23 +157,26 @@ void test_priority_selection() {
     MMIOBus bus;
     InterruptController ic(bus, 0x40002000);
 
-    ic.registerInterrupt(1);
-    ic.registerInterrupt(2);
+    constexpr std::uint8_t IRQ1 = 1;
+    constexpr std::uint8_t IRQ2 = 2;
 
-    ic.enable(1);
-    ic.enable(2);
+    ic.registerInterrupt(IRQ1);
+    ic.registerInterrupt(IRQ2);
+
+    ic.enable(IRQ1);
+    ic.enable(IRQ2);
 
     // Set priority: ID 1 = 10, ID 2 = 5 (lower numerical value = higher priority)
-    ic.setPriority(1, 10);
-    ic.setPriority(2, 5);
+    ic.setPriority(IRQ1, 10);
+    ic.setPriority(IRQ2, 5);
 
     std::vector<int> execution_order;
-    ic.registerHandler(1, [&]() { execution_order.push_back(1); });
-    ic.registerHandler(2, [&]() { execution_order.push_back(2); });
+    ic.registerHandler(IRQ1, [&]() { execution_order.push_back(1); });
+    ic.registerHandler(IRQ2, [&]() { execution_order.push_back(2); });
 
     // Trigger both
-    ic.trigger(1);
-    ic.trigger(2);
+    ic.trigger(IRQ1);
+    ic.trigger(IRQ2);
 
     // First dispatch should pick ID 2 (higher priority 5)
     bool dispatch1_ok = ic.dispatch();

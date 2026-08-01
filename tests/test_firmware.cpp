@@ -113,7 +113,8 @@ void test_basic_firmware_gpio_behavior() {
     efs::cpu::CPU cpu;
 
     constexpr std::uint8_t TARGET_PIN = 4;
-    auto fw = std::make_shared<efs::firmware::BasicFirmware>(gpio, TARGET_PIN, 2);
+    constexpr efs::common::Size TOGGLE_INTERVAL = 2;
+    auto fw = std::make_shared<efs::firmware::BasicFirmware>(gpio, TARGET_PIN, TOGGLE_INTERVAL);
     cpu.loadFirmware(fw);
 
     cpu.start();
