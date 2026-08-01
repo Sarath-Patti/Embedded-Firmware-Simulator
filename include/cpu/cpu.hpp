@@ -2,6 +2,7 @@
 #define EFS_CPU_CPU_HPP
 
 #include "common/types.hpp"
+#include "drivers/dma/dma_controller.hpp"
 #include "drivers/timer/timer.hpp"
 #include "kernel/interrupt_controller.hpp"
 #include "firmware/firmware.hpp"
@@ -57,7 +58,7 @@ public:
     /// Resets the CPU cycle counter, register file, and FirmwareManager state.
     void reset();
 
-    /// Executes exactly one simulation step (FirmwareManager update, SystemBus timer update, SystemBus interrupt dispatch).
+    /// Executes exactly one simulation step (FirmwareManager update, SystemBus timer/DMA update, SystemBus interrupt dispatch).
     /// Execution is halted while power state is OFF or SLEEP.
     void step();
 
@@ -75,6 +76,15 @@ public:
 
     /// Returns pointer to current active firmware instance or nullptr.
     [[nodiscard]] std::shared_ptr<firmware::Firmware> firmware() const noexcept;
+
+    /// Attaches a DMA controller to receive tick notifications via SystemBus.
+    bool attachDMA(drivers::dma::DMAController* dma);
+
+    /// Detaches a DMA controller from the SystemBus.
+    bool detachDMA(drivers::dma::DMAController* dma);
+
+    /// Returns primary attached DMA controller pointer or nullptr.
+    [[nodiscard]] drivers::dma::DMAController* dmaController() const noexcept;
 
     /// Attaches a hardware timer to receive CPU tick notifications via SystemBus.
     bool attachTimer(drivers::timer::Timer* timer);

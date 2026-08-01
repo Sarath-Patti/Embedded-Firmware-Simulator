@@ -72,6 +72,9 @@ void CPU::reset() {
     m_cycleCount = 0;
     m_registerFile.reset();
     m_firmwareManager.reset();
+    if (m_systemBus != nullptr) {
+        m_systemBus->reset();
+    }
 }
 
 const registers::RegisterFile& CPU::registerFile() const noexcept {
@@ -145,6 +148,24 @@ bool CPU::firmwareLoaded() const noexcept {
 
 std::shared_ptr<firmware::Firmware> CPU::firmware() const noexcept {
     return m_firmwareManager.activeFirmware();
+}
+
+bool CPU::attachDMA(drivers::dma::DMAController* dma) {
+    if (m_systemBus == nullptr) {
+        return false;
+    }
+    return m_systemBus->attachDMA(dma);
+}
+
+bool CPU::detachDMA(drivers::dma::DMAController* dma) {
+    if (m_systemBus == nullptr) {
+        return false;
+    }
+    return m_systemBus->detachDMA(dma);
+}
+
+drivers::dma::DMAController* CPU::dmaController() const noexcept {
+    return m_systemBus ? m_systemBus->dma() : nullptr;
 }
 
 bool CPU::attachTimer(drivers::timer::Timer* timer) {

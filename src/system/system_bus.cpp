@@ -20,6 +20,7 @@ SystemBus::~SystemBus() {
         }
     }
     m_timers.clear();
+    m_dmas.clear();
 }
 
 clock::SimulationClock& SystemBus::clock() noexcept {
@@ -40,6 +41,11 @@ const scheduler::EventScheduler& SystemBus::scheduler() const noexcept {
 
 void SystemBus::setMemory(memory::Memory* memory) noexcept {
     m_memory = memory;
+    for (auto* dma : m_dmas) {
+        if (dma != nullptr) {
+            dma->attachMemory(memory);
+        }
+    }
 }
 
 memory::Memory* SystemBus::memory() const noexcept {
@@ -48,6 +54,11 @@ memory::Memory* SystemBus::memory() const noexcept {
 
 void SystemBus::setMMIO(mmio::MMIOBus* mmioBus) noexcept {
     m_mmioBus = mmioBus;
+    for (auto* dma : m_dmas) {
+        if (dma != nullptr) {
+            dma->attachMMIO(mmioBus);
+        }
+    }
 }
 
 mmio::MMIOBus* SystemBus::mmio() const noexcept {
@@ -56,10 +67,64 @@ mmio::MMIOBus* SystemBus::mmio() const noexcept {
 
 void SystemBus::setInterrupts(kernel::InterruptController* interruptController) noexcept {
     m_interruptController = interruptController;
+    for (auto* dma : m_dmas) {
+        if (dma != nullptr) {
+            dma->attachInterruptController(interruptController, dma->interruptId());
+        }
+    }
 }
 
 kernel::InterruptController* SystemBus::interrupts() const noexcept {
     return m_interruptController;
+}
+
+bool SystemBus::attachDMA(drivers::dma::DMAController* dma) {
+    if (dma == nullptr) {
+        common::Logger::warning("SystemBus attempt to attach null DMA controller");
+        return false;
+    }
+    auto it = std::find(m_dmas.begin(), m_dmas.end(), dma);
+    if (it != m_dmas.end()) {
+        common::Logger::warning("DMA controller already attached to SystemBus");
+        return false;
+    }
+    if (m_memory != nullptr) {
+        dma->attachMemory(m_memory);
+    }
+    if (m_mmioBus != nullptr) {
+        dma->attachMMIO(m_mmioBus);
+    }
+    if (m_interruptController != nullptr) {
+        dma->attachInterruptController(m_interruptController, dma->interruptId());
+    }
+    if (m_uart != nullptr) {
+        dma->attachUART(m_uart);
+    }
+    dma->attachScheduler(&m_scheduler);
+    m_dmas.push_back(dma);
+    return true;
+}
+
+bool SystemBus::detachDMA(drivers::dma::DMAController* dma) {
+    if (dma == nullptr) {
+        return false;
+    }
+    auto it = std::find(m_dmas.begin(), m_dmas.end(), dma);
+    if (it == m_dmas.end()) {
+        common::Logger::warning("Attempted to detach unattached DMA controller from SystemBus");
+        return false;
+    }
+    dma->detachScheduler();
+    m_dmas.erase(it);
+    return true;
+}
+
+drivers::dma::DMAController* SystemBus::dma() const noexcept {
+    return m_dmas.empty() ? nullptr : m_dmas.front();
+}
+
+const std::vector<drivers::dma::DMAController*>& SystemBus::dmas() const noexcept {
+    return m_dmas;
 }
 
 bool SystemBus::attachTimer(drivers::timer::Timer* timer) {
@@ -99,6 +164,11 @@ const std::vector<drivers::timer::Timer*>& SystemBus::timers() const noexcept {
 
 void SystemBus::tickTimers() {
     m_clock.tick();
+    for (auto* dma : m_dmas) {
+        if (dma != nullptr) {
+            dma->tick();
+        }
+    }
     for (auto* timer : m_timers) {
         if (timer != nullptr) {
             timer->tick();
@@ -116,6 +186,11 @@ drivers::gpio::GPIO* SystemBus::gpio() const noexcept {
 
 void SystemBus::attachUART(drivers::uart::UART* uart) noexcept {
     m_uart = uart;
+    for (auto* dma : m_dmas) {
+        if (dma != nullptr) {
+            dma->attachUART(uart);
+        }
+    }
 }
 
 drivers::uart::UART* SystemBus::uart() const noexcept {
@@ -123,6 +198,11 @@ drivers::uart::UART* SystemBus::uart() const noexcept {
 }
 
 void SystemBus::reset() {
+    for (auto* dma : m_dmas) {
+        if (dma != nullptr) {
+            dma->reset();
+        }
+    }
     if (m_gpio != nullptr) {
         m_gpio->reset();
     }

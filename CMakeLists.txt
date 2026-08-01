@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 1.7.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 1.8.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,6 +30,7 @@ add_library(embedded_firmware_simulator STATIC
     src/drivers/gpio/gpio.cpp
     src/drivers/timer/timer.cpp
     src/drivers/uart/uart.cpp
+    src/drivers/dma/dma_controller.cpp
     src/hal/gpio_hal.cpp
     src/hal/timer_hal.cpp
     src/hal/uart_hal.cpp
@@ -85,6 +86,10 @@ add_executable(power_demo examples/power_demo.cpp)
 target_link_libraries(power_demo PRIVATE embedded_firmware_simulator)
 target_compile_options(power_demo PRIVATE ${EFS_WARNING_FLAGS})
 
+add_executable(dma_demo examples/dma_demo.cpp)
+target_link_libraries(dma_demo PRIVATE embedded_firmware_simulator)
+target_compile_options(dma_demo PRIVATE ${EFS_WARNING_FLAGS})
+
 # Testing Configuration
 enable_testing()
 
@@ -111,3 +116,4 @@ efs_add_test(system_tests tests/test_system_bus.cpp SystemTests)
 efs_add_test(clock_tests tests/test_clock.cpp ClockTests)
 efs_add_test(scheduler_tests tests/test_scheduler.cpp SchedulerTests)
 efs_add_test(hal_tests tests/test_hal.cpp HALTests)
+efs_add_test(dma_tests tests/test_dma.cpp DMATests)

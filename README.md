@@ -2,7 +2,7 @@
 
 [![CI Status](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml)
 
-A high-performance, modular **C++20 Embedded Firmware Simulator** designed for bare-metal firmware development, hardware abstraction layer (HAL) validation, hardware peripheral simulation, deterministic timing analysis, low-power state management, and real-time interactive debugging without physical hardware.
+A high-performance, modular **C++20 Embedded Firmware Simulator** designed for bare-metal firmware development, hardware abstraction layer (HAL) validation, hardware peripheral simulation, deterministic timing analysis, low-power state management, Direct Memory Access (DMA) transfers, and real-time interactive debugging without physical hardware.
 
 ---
 
@@ -10,12 +10,13 @@ A high-performance, modular **C++20 Embedded Firmware Simulator** designed for b
 
 Developing and testing embedded firmware on physical hardware is often constrained by limited debugging visibility, slow flashing cycles, complex hardware availability, and non-deterministic timing environments.
 
-The **Embedded Firmware Simulator** solves these challenges by providing a modular, C++20 simulated system architecture. Hardware peripherals expose standardized MMIO registers, the kernel dispatches priority interrupts, the CPU coordinates cycle simulation steps, a cycle-driven Event Scheduler handles asynchronous peripheral events, a Hardware Abstraction Layer (HAL) isolates firmware from hardware details, a central FirmwareManager manages firmware application lifecycles, a Power Management & Reset Controller subsystem models system power states and reset behaviors, and an interactive monitor CLI gives developers complete visibility into system state in real time.
+The **Embedded Firmware Simulator** solves these challenges by providing a modular, C++20 simulated system architecture. Hardware peripherals expose standardized MMIO registers, the kernel dispatches priority interrupts, a Direct Memory Access (DMA) controller streams data between memory and peripherals without CPU intervention, the CPU coordinates cycle simulation steps, a cycle-driven Event Scheduler handles asynchronous peripheral events, a Hardware Abstraction Layer (HAL) isolates firmware from hardware details, a central FirmwareManager manages firmware application lifecycles, a Power Management & Reset Controller subsystem models system power states and reset behaviors, and an interactive monitor CLI gives developers complete visibility into system state in real time.
 
 ---
 
-## Key Features (v1.7.0)
+## Key Features (v1.8.0)
 
+- **Direct Memory Access (DMA) Controller (`efs::drivers::dma::DMAController`)**: Cycle-accurate background data transfer between Memory and MMIO peripherals without CPU intervention. Supports Memory-to-Memory, Memory-to-MMIO, and MMIO-to-Memory transfers at 1 byte per simulation cycle, with completion interrupt generation.
 - **Power Management Subsystem (`efs::system::power::PowerController`)**: Manages system power states (`ON`, `OFF`, `SLEEP`) and enforces CPU instruction execution restrictions during low-power modes.
 - **Reset Controller (`efs::system::power::ResetController`)**: Granular reset orchestration supporting `resetCPU()`, `resetPeripherals()`, `resetFirmware()`, and `resetSystem()`.
 - **Firmware Application Framework (`efs::firmware::FirmwareManager`)**: Centralized manager decoupling multiple firmware applications from hardware and CPU execution, providing active application selection and lifecycle orchestration.
@@ -28,14 +29,14 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 - **Hardware Abstraction Layer (`efs::hal`)**: Provides clean, stable `GPIOHAL`, `TimerHAL`, and `UARTHAL` abstractions hiding raw peripheral implementation details from firmware.
 - **Event Scheduler (`efs::system::scheduler::EventScheduler`)**: Deterministic cycle-driven event scheduler for executing callbacks at specific simulation times with strict FIFO ordering for simultaneous events.
 - **Simulation Clock (`efs::system::clock::SimulationClock`)**: Centralized deterministic timing source maintaining simulated cycle counts and calculating elapsed nanoseconds, microseconds, and milliseconds.
-- **System Bus Architecture (`efs::system::SystemBus`)**: Centralized communication layer interconnecting CPU, Memory, MMIO Bus, Interrupt Controller, Simulation Clock, Event Scheduler, Power Subsystem, and Hardware Peripherals.
+- **System Bus Architecture (`efs::system::SystemBus`)**: Centralized communication layer interconnecting CPU, Memory, MMIO Bus, Interrupt Controller, Simulation Clock, Event Scheduler, Power Subsystem, DMA Controller, and Hardware Peripherals.
 - **Memory Subsystem (`efs::memory::Memory`)**: Contiguous byte-addressable memory buffer with strict boundary checking, reset utilities, and error logging.
 - **MMIO Bus Infrastructure (`efs::mmio::MMIOBus`, `efs::mmio::Register`)**: Memory-mapped register abstraction enabling peripheral integration and dynamic address dispatching.
 - **GPIO Peripheral (`efs::drivers::gpio::GPIO`)**: 32-pin GPIO peripheral modeling Direction (DIR), Output (OUT), and Input (IN) registers.
 - **Hardware Timer Peripheral (`efs::drivers::timer::Timer`)**: Configurable hardware timer modeling Control (CTRL), Counter (COUNT), Compare (COMPARE), and Status (STATUS) registers with match interrupts driven by scheduled events.
 - **UART Peripheral (`efs::drivers::uart::UART`)**: Serial communication peripheral modeling DATA, STATUS, CONTROL, and BAUD registers with internal TX and RX FIFOs.
 - **Interrupt Controller (`efs::kernel::InterruptController`)**: Priority interrupt manager supporting 32 IRQ sources, enabling/disabling, priority dispatching, and ISR registration.
-- **CPU Execution Engine (`efs::cpu::CPU`)**: Cycle-based execution loop connected directly to the System Bus, driving the Simulation Clock, executing ready scheduled events, dispatching pending interrupts, and running loaded firmware via FirmwareManager.
+- **CPU Execution Engine (`efs::cpu::CPU`)**: Cycle-based execution loop connected directly to the System Bus, driving the Simulation Clock, executing ready scheduled events, dispatching pending interrupts, stepping DMA transfers, and running loaded firmware via FirmwareManager.
 - **CPU Register File (`efs::cpu::registers::RegisterFile`)**: Encapsulates processor state including 16 General Purpose Registers (R0–R15), Program Counter (PC), Stack Pointer (SP), and Status Register (SR).
 - **Interactive Monitor CLI (`efs::monitor::Monitor`)**: Non-destructive command-line debugger allowing real-time step execution, memory dumps, register inspection, peripheral querying, clock timing observation, and pending event inspection.
 
@@ -70,17 +71,75 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
                        │       System Bus        │
                        └─────┬───────────┬───────┘
                              │           │
-           ┌─────────────────┼───────────┴─────────────────┐
-           ▼                 ▼                             ▼
-┌─────────────────────┐ ┌─────────┐             ┌─────────────────────┐
-│   Memory Subsystem  │ │  MMIO   │             │Interrupt Controller │
-└─────────────────────┘ └────┬────┘             └─────────────────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         ▼                   ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ GPIO Peripheral │ │ TimerPeripheral │ │ UART Peripheral │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
+           ┌─────────────────┼───────────┼─────────────────┐
+           ▼                 ▼           ▼                 ▼
+┌─────────────────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────────────┐
+│   Memory Subsystem  │ │   DMA   │ │  MMIO   │ │Interrupt Controller │
+└─────────────────────┘ └─────────┘ └────┬────┘ └─────────────────────┘
+                                         │
+                     ┌───────────────────┼───────────────────┐
+                     ▼                   ▼                   ▼
+            ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+            │ GPIO Peripheral │ │ TimerPeripheral │ │ UART Peripheral │
+            └─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+---
+
+## Direct Memory Access (DMA) Architecture & Transfer Flow
+
+The DMA Controller (`efs::drivers::dma::DMAController`) performs autonomous data transfers between Memory and MMIO Peripherals at a rate of one byte per simulation cycle without consuming CPU execution instructions.
+
+### DMA Architecture
+
+```text
+                 CPU Execution Loop
+                         │
+                         ▼
+                  DMA Controller
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+       Memory        MMIO Bus      Peripherals
+                                 ┌───┼───┐
+                                 ▼   ▼   ▼
+                               GPIO Timer UART
+```
+
+### Transfer Flow
+
+```text
+1. configure(src, dst, len) ──► 2. start() ──► 3. Cycle Step (1 Byte/Cycle) ──► 4. Completion Interrupt
+```
+
+1. **Configuration**: `configure(srcAddress, dstAddress, length)` sets up source/destination addresses and transfer byte count. Incrementing behavior is auto-detected for Memory (increment) vs MMIO registers (fixed address).
+2. **Initiation**: `start()` validates address bounds and sets `busy() = true`.
+3. **Cycle Execution**: On each simulation cycle, `step()` transfers 1 byte from source to destination without blocking the CPU.
+4. **Completion**: Upon transferring the final byte, `busy() = false`, `completed() = true`, and a completion interrupt is triggered on the configured Interrupt Controller IRQ channel.
+
+### Example Usage
+
+```cpp
+// Initialize SystemBus and DMA Controller
+efs::memory::Memory memory(2048);
+efs::mmio::MMIOBus mmioBus;
+efs::kernel::InterruptController ic(mmioBus, 0x40002000);
+efs::system::SystemBus systemBus(&memory, &mmioBus, &ic);
+
+efs::drivers::dma::DMAController dma(&memory, &mmioBus, &ic);
+dma.attachInterruptController(&ic, 5 /* IRQ ID */);
+systemBus.attachDMA(&dma);
+
+efs::cpu::CPU cpu(&systemBus);
+
+// Configure DMA for Memory-to-Memory copy (64 bytes)
+dma.configure(0x0100, 0x0200, 64);
+dma.start();
+
+// Run CPU for 64 simulation cycles (DMA steps 1 byte per cycle in background)
+cpu.run(64);
+
+assert(dma.completed());
+assert(ic.pending(5));
 ```
 
 ---
@@ -107,27 +166,9 @@ The Power Management subsystem simulates bare-metal embedded power states and mu
 └───────────────────────┘    └───────────────┘
 ```
 
-- **ON**: Full active execution mode. CPU steps, advances clock cycles, dispatches interrupts, and updates active firmware.
+- **ON**: Full active execution mode. CPU steps, advances clock cycles, dispatches interrupts, steps DMA transfers, and updates active firmware.
 - **SLEEP**: Low-power standby mode. CPU halts instruction execution (`step()` and `run()` immediately return without advancing cycle counters).
 - **OFF**: Powered down state. System execution is suspended.
-
-### Reset Flow Architecture
-
-```text
-                    ┌─────────────────────────┐
-                    │    ResetController      │
-                    └────────────┬────────────┘
-                                 │
-     ┌──────────────────┬────────┴─────────┬──────────────────┐
-     ▼                  ▼                  ▼                  ▼
-resetCPU()    resetPeripherals()   resetFirmware()     resetSystem()
-  (CPU)          (Peripherals)        (Firmware)       (Full System)
-```
-
-- `resetCPU()`: Resets CPU registers (PC, SP, R0–R15) and simulation cycle counter. Peripherals and firmware retain internal state.
-- `resetPeripherals()`: Resets GPIO (DIR, OUT, IN), Timer (counter, compare, status), UART (FIFOs, control, status), and InterruptController masks. CPU and firmware retain state.
-- `resetFirmware()`: Resets active firmware state and re-invokes `initialize()`, restarting the firmware lifecycle cleanly.
-- `resetSystem()`: Executes full system reset across CPU, peripherals, firmware, memory, and clock.
 
 ---
 
@@ -156,22 +197,6 @@ The project maintains a production-grade GitHub Actions CI pipeline (`.github/wo
 
 ---
 
-## Hardware Abstraction Layer (HAL)
-
-The Hardware Abstraction Layer (`efs::hal`) provides a high-level, production-grade interface between firmware and hardware peripherals:
-
-```text
-                Firmware Application
-                         │
-                         ▼
-             Hardware Abstraction Layer
-        ┌────────────────┼────────────────┐
-        ▼                ▼                ▼
-     GPIOHAL          TimerHAL         UARTHAL
-```
-
----
-
 ## Repository Layout
 
 ```text
@@ -180,13 +205,17 @@ Embedded-Firmware-Simulator/
 │   └── workflows/
 │       └── ci.yml            # CI build & test pipeline matrix
 ├── include/                  # Public C++ header interfaces
+│   ├── drivers/
+│   │   └── dma/              # DMAController header
 │   └── system/
 │       └── power/            # PowerController & ResetController headers
 ├── src/                      # Implementation files matching include/ structure
+│   ├── drivers/
+│   │   └── dma/              # DMAController implementation
 │   └── system/
 │       └── power/            # PowerController & ResetController implementations
-├── examples/                 # Sample applications (firmware_demo, uart_demo, hal_demo, firmware_manager_demo, power_demo)
-├── tests/                    # CTest unit test suite (16 test suites)
+├── examples/                 # Sample applications (firmware_demo, uart_demo, hal_demo, power_demo, dma_demo)
+├── tests/                    # CTest unit test suite (17 test suites)
 ├── CMakeLists.txt            # CMake build system configuration
 └── README.md                 # Project documentation
 ```
@@ -240,13 +269,14 @@ cmake --build build
 ./hal_demo
 ./firmware_manager_demo
 ./power_demo
+./dma_demo
 ```
 
 ---
 
 ## Running Tests
 
-Execute the full CTest unit test suite covering all 16 project test modules:
+Execute the full CTest unit test suite covering all 17 project test modules:
 
 ```bash
 # Navigate to build directory and run tests
@@ -264,9 +294,9 @@ ctest --test-dir build --output-on-failure
 
 ## Project Statistics
 
-- **Core Subsystems**: Power Subsystem (`PowerController`, `ResetController`), Firmware Manager, HAL (`GPIOHAL`, `TimerHAL`, `UARTHAL`), Event Scheduler, Simulation Clock, System Bus, Memory, MMIO, GPIO, Timer, UART, Interrupt Controller, CPU, Register File, Firmware Framework, Interactive Monitor
+- **Core Subsystems**: DMA Controller (`DMAController`), Power Subsystem (`PowerController`, `ResetController`), Firmware Manager, HAL (`GPIOHAL`, `TimerHAL`, `UARTHAL`), Event Scheduler, Simulation Clock, System Bus, Memory, MMIO, GPIO, Timer, UART, Interrupt Controller, CPU, Register File, Firmware Framework, Interactive Monitor
 - **Peripherals Modeled**: 3 (`GPIO`, `Hardware Timer`, `UART Serial Interface`)
-- **Unit Test Suites**: 16 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `FirmwareManagerTests`, `PowerTests`, `RegisterTests`, `MonitorTests`, `UARTTests`, `SystemTests`, `ClockTests`, `SchedulerTests`, `HALTests`)
+- **Unit Test Suites**: 17 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `FirmwareManagerTests`, `PowerTests`, `RegisterTests`, `MonitorTests`, `UARTTests`, `SystemTests`, `ClockTests`, `SchedulerTests`, `HALTests`, `DMATests`)
 - **CI Test Platforms**: Ubuntu, macOS, Windows
 - **Language Standard**: Modern C++20
 
@@ -292,13 +322,14 @@ ctest --test-dir build --output-on-failure
 - [x] **v1.5.1 – Continuous Integration & Quality Gates**: Cross-platform GitHub Actions CI matrix pipeline, `-Werror` quality gates, and build status reporting.
 - [x] **v1.6 – Firmware Application Framework**: `FirmwareManager`, lifecycle interface (`initialize`, `update`, `shutdown`, `reset`), `TimerBlinkFirmware`, and `UARTEchoFirmware`.
 - [x] **v1.7 – Power Management & Reset Controller**: `PowerController` (`ON`, `OFF`, `SLEEP`), `ResetController` (`resetCPU`, `resetPeripherals`, `resetFirmware`, `resetSystem`), and CPU power execution constraints.
+- [x] **v1.8 – Direct Memory Access (DMA) Controller**: `DMAController` background byte transfers (Memory-to-Memory, Memory-to-MMIO, MMIO-to-Memory), completion interrupts, and SystemBus integration.
 
 ---
 
 ## Future Work
 
-- [ ] **v1.8 – Firmware Binary Loader**: ELF and Intel HEX firmware binary image loader.
-- [ ] **v1.9 – Advanced Monitor Debugging**: Breakpoints, watchpoints, and symbol table resolution.
+- [ ] **v1.9 – Firmware Binary Loader**: ELF and Intel HEX firmware binary image loader.
+- [ ] **v2.0 – Advanced Monitor Debugging**: Breakpoints, watchpoints, and symbol table resolution.
 
 ---
 

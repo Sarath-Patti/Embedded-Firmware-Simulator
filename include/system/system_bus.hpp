@@ -1,6 +1,7 @@
 #ifndef EFS_SYSTEM_SYSTEM_BUS_HPP
 #define EFS_SYSTEM_SYSTEM_BUS_HPP
 
+#include "drivers/dma/dma_controller.hpp"
 #include "drivers/gpio/gpio.hpp"
 #include "drivers/timer/timer.hpp"
 #include "drivers/uart/uart.hpp"
@@ -13,7 +14,7 @@
 
 namespace efs::system {
 
-/// Central System Bus connecting Memory, MMIO Bus, Interrupt Controller, Simulation Clock, Event Scheduler, and Peripherals.
+/// Central System Bus connecting Memory, MMIO Bus, Interrupt Controller, Simulation Clock, Event Scheduler, DMA, and Peripherals.
 class SystemBus {
 public:
     SystemBus(memory::Memory* memory = nullptr,
@@ -56,6 +57,18 @@ public:
     /// Returns pointer to attached Interrupt Controller.
     [[nodiscard]] kernel::InterruptController* interrupts() const noexcept;
 
+    /// Attaches a DMA controller to receive clock tick notifications.
+    bool attachDMA(drivers::dma::DMAController* dma);
+
+    /// Detaches a DMA controller from the system bus.
+    bool detachDMA(drivers::dma::DMAController* dma);
+
+    /// Returns primary attached DMA controller pointer or nullptr.
+    [[nodiscard]] drivers::dma::DMAController* dma() const noexcept;
+
+    /// Returns list of attached DMA controllers.
+    [[nodiscard]] const std::vector<drivers::dma::DMAController*>& dmas() const noexcept;
+
     /// Attaches a hardware timer to receive CPU tick notifications per simulation cycle.
     bool attachTimer(drivers::timer::Timer* timer);
 
@@ -65,7 +78,7 @@ public:
     /// Returns list of attached hardware timers.
     [[nodiscard]] const std::vector<drivers::timer::Timer*>& timers() const noexcept;
 
-    /// Advances the Simulation Clock and ticks all attached hardware timers.
+    /// Advances the Simulation Clock and ticks all attached DMA controllers and hardware timers.
     void tickTimers();
 
     /// Attaches GPIO peripheral.
@@ -80,7 +93,7 @@ public:
     /// Returns attached UART peripheral pointer.
     [[nodiscard]] drivers::uart::UART* uart() const noexcept;
 
-    /// Resets all attached peripherals (GPIO, Timers, UART, Interrupt Controller, Memory, Clock).
+    /// Resets all attached peripherals (DMA, GPIO, Timers, UART, Interrupt Controller, Memory, Clock).
     void reset();
 
 private:
@@ -89,6 +102,7 @@ private:
     kernel::InterruptController* m_interruptController{nullptr};
     clock::SimulationClock m_clock;
     scheduler::EventScheduler m_scheduler;
+    std::vector<drivers::dma::DMAController*> m_dmas;
     std::vector<drivers::timer::Timer*> m_timers;
     drivers::gpio::GPIO* m_gpio{nullptr};
     drivers::uart::UART* m_uart{nullptr};
