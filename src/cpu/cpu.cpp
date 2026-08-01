@@ -60,15 +60,16 @@ registers::RegisterFile& CPU::registerFile() noexcept {
 void CPU::step() {
     m_cycleCount++;
 
-    if (m_firmware != nullptr && m_running) {
-        m_firmware->execute();
-    }
-
     if (m_systemBus != nullptr) {
         m_systemBus->tickTimers();
+        m_systemBus->scheduler().executeReadyEvents(m_systemBus->clock().cycles());
         if (m_systemBus->interrupts() != nullptr) {
             m_systemBus->interrupts()->dispatch();
         }
+    }
+
+    if (m_firmware != nullptr && m_running) {
+        m_firmware->execute();
     }
 }
 

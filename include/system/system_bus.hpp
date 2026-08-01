@@ -8,11 +8,12 @@
 #include "memory/memory.hpp"
 #include "mmio/mmio_bus.hpp"
 #include "system/clock/simulation_clock.hpp"
+#include "system/scheduler/event_scheduler.hpp"
 #include <vector>
 
 namespace efs::system {
 
-/// Central System Bus connecting Memory, MMIO Bus, Interrupt Controller, Simulation Clock, and Peripherals.
+/// Central System Bus connecting Memory, MMIO Bus, Interrupt Controller, Simulation Clock, Event Scheduler, and Peripherals.
 class SystemBus {
 public:
     SystemBus(memory::Memory* memory = nullptr,
@@ -30,6 +31,12 @@ public:
 
     /// Accesses the central Simulation Clock (read-only).
     [[nodiscard]] const clock::SimulationClock& clock() const noexcept;
+
+    /// Accesses the central Event Scheduler (mutable).
+    [[nodiscard]] scheduler::EventScheduler& scheduler() noexcept;
+
+    /// Accesses the central Event Scheduler (read-only).
+    [[nodiscard]] const scheduler::EventScheduler& scheduler() const noexcept;
 
     /// Sets or attaches the Memory subsystem.
     void setMemory(memory::Memory* memory) noexcept;
@@ -78,6 +85,7 @@ private:
     mmio::MMIOBus* m_mmioBus{nullptr};
     kernel::InterruptController* m_interruptController{nullptr};
     clock::SimulationClock m_clock;
+    scheduler::EventScheduler m_scheduler;
     std::vector<drivers::timer::Timer*> m_timers;
     drivers::gpio::GPIO* m_gpio{nullptr};
     drivers::uart::UART* m_uart{nullptr};

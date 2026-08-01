@@ -9,6 +9,7 @@
 #include "memory/memory.hpp"
 #include "mmio/mmio_bus.hpp"
 #include "system/clock/simulation_clock.hpp"
+#include "system/scheduler/event_scheduler.hpp"
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -25,7 +26,8 @@ public:
             drivers::timer::Timer* timer = nullptr,
             kernel::InterruptController* interruptController = nullptr,
             drivers::uart::UART* uart = nullptr,
-            system::clock::SimulationClock* clock = nullptr);
+            system::clock::SimulationClock* clock = nullptr,
+            system::scheduler::EventScheduler* scheduler = nullptr);
     ~Monitor() = default;
 
     Monitor(const Monitor&) = delete;
@@ -57,6 +59,9 @@ public:
     /// Attaches or updates the SimulationClock reference.
     void setClock(system::clock::SimulationClock* clock) noexcept;
 
+    /// Attaches or updates the EventScheduler reference.
+    void setScheduler(system::scheduler::EventScheduler* scheduler) noexcept;
+
     /// Executes a single command string non-blockingly. Returns false if 'exit'/'quit' command is issued.
     bool executeCommand(std::string_view commandLine, std::ostream& output = std::cout);
 
@@ -76,6 +81,7 @@ private:
     void printMMIO(std::ostream& output) const;
     void printUART(std::ostream& output) const;
     void printClock(std::ostream& output) const;
+    void printEvents(std::ostream& output) const;
     void handleRun(std::string_view args, std::ostream& output);
 
     cpu::CPU* m_cpu{nullptr};
@@ -86,6 +92,7 @@ private:
     kernel::InterruptController* m_interruptController{nullptr};
     drivers::uart::UART* m_uart{nullptr};
     system::clock::SimulationClock* m_clock{nullptr};
+    system::scheduler::EventScheduler* m_scheduler{nullptr};
 };
 
 } // namespace efs::monitor

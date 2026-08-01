@@ -20,6 +20,14 @@ const clock::SimulationClock& SystemBus::clock() const noexcept {
     return m_clock;
 }
 
+scheduler::EventScheduler& SystemBus::scheduler() noexcept {
+    return m_scheduler;
+}
+
+const scheduler::EventScheduler& SystemBus::scheduler() const noexcept {
+    return m_scheduler;
+}
+
 void SystemBus::setMemory(memory::Memory* memory) noexcept {
     m_memory = memory;
 }
@@ -55,6 +63,7 @@ bool SystemBus::attachTimer(drivers::timer::Timer* timer) {
         return false;
     }
     timer->attachClock(&m_clock);
+    timer->attachScheduler(&m_scheduler);
     m_timers.push_back(timer);
     return true;
 }
@@ -69,6 +78,7 @@ bool SystemBus::detachTimer(drivers::timer::Timer* timer) {
         return false;
     }
     timer->detachClock();
+    timer->detachScheduler();
     m_timers.erase(it);
     return true;
 }

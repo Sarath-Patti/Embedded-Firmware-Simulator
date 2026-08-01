@@ -14,6 +14,11 @@ namespace efs::system::clock {
 class SimulationClock;
 }
 
+namespace efs::system::scheduler {
+class EventScheduler;
+using EventId = std::uint64_t;
+}
+
 namespace efs::drivers::timer {
 
 class Timer {
@@ -46,6 +51,10 @@ public:
     void detachClock() noexcept;
     [[nodiscard]] system::clock::SimulationClock* clock() const noexcept;
 
+    void attachScheduler(system::scheduler::EventScheduler* scheduler) noexcept;
+    void detachScheduler() noexcept;
+    [[nodiscard]] system::scheduler::EventScheduler* scheduler() const noexcept;
+
     void setCompare(common::DWord value);
     [[nodiscard]] common::DWord compare() const noexcept;
     [[nodiscard]] common::DWord counter() const noexcept;
@@ -59,6 +68,10 @@ public:
     [[nodiscard]] common::Address statusAddress() const noexcept;
 
 private:
+    void updateScheduledCompareEvent();
+    void cancelScheduledCompareEvent();
+    void handleCompareMatch();
+
     mmio::MMIOBus& m_bus;
     common::Address m_baseAddress;
 
@@ -72,6 +85,9 @@ private:
 
     system::clock::SimulationClock* m_clock{nullptr};
     common::QWord m_lastClockCycles{0};
+
+    system::scheduler::EventScheduler* m_scheduler{nullptr};
+    system::scheduler::EventId m_compareEventId{0};
 };
 
 } // namespace efs::drivers::timer

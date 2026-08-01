@@ -152,7 +152,7 @@ bool InterruptController::dispatch() {
     std::uint8_t highestPriority = std::numeric_limits<std::uint8_t>::max();
 
     for (std::uint8_t id = 0; id < MAX_INTERRUPTS; ++id) {
-        if (m_registered[id] && enabled(id) && pending(id)) {
+        if (m_registered[id] && enabled(id) && pending(id) && m_handlers[id] != nullptr) {
             std::uint8_t prio = m_priorities[id];
             // Lower priority numerical value indicates higher execution priority
             if (bestId == -1 || prio < highestPriority) {

@@ -36,7 +36,8 @@ Monitor::Monitor(cpu::CPU* cpu,
                  drivers::timer::Timer* timer,
                  kernel::InterruptController* interruptController,
                  drivers::uart::UART* uart,
-                 system::clock::SimulationClock* clock)
+                 system::clock::SimulationClock* clock,
+                 system::scheduler::EventScheduler* scheduler)
     : m_cpu(cpu),
       m_memory(memory),
       m_mmioBus(mmioBus),
@@ -44,7 +45,8 @@ Monitor::Monitor(cpu::CPU* cpu,
       m_timer(timer),
       m_interruptController(interruptController),
       m_uart(uart),
-      m_clock(clock) {
+      m_clock(clock),
+      m_scheduler(scheduler) {
 }
 
 void Monitor::setCPU(cpu::CPU* cpu) noexcept {
@@ -77,6 +79,10 @@ void Monitor::setUART(drivers::uart::UART* uart) noexcept {
 
 void Monitor::setClock(system::clock::SimulationClock* clock) noexcept {
     m_clock = clock;
+}
+
+void Monitor::setScheduler(system::scheduler::EventScheduler* scheduler) noexcept {
+    m_scheduler = scheduler;
 }
 
 bool Monitor::executeCommand(std::string_view commandLine, std::ostream& output) {
@@ -166,6 +172,11 @@ bool Monitor::executeCommand(std::string_view commandLine, std::ostream& output)
         return true;
     }
 
+    if (cmd == "events") {
+        printEvents(output);
+        return true;
+    }
+
     output << "Unknown command: '" << cmdWord << "'. Type 'help' for supported commands.\n";
     return true;
 }
@@ -202,7 +213,8 @@ void Monitor::printHelp(std::ostream& output) const {
            << "  memory <addr> <cnt>   Display memory bytes in hex.\n"
            << "  mmio                  Display all registered MMIO addresses.\n"
            << "  uart                  Display UART peripheral state.\n"
-           << "  clock                 Display simulation clock state.\n";
+           << "  clock                 Display simulation clock state.\n"
+           << "  events                Display pending scheduled events.\n";
 }
 
 void Monitor::printRegs(std::ostream& output) const {
@@ -368,6 +380,31 @@ void Monitor::printClock(std::ostream& output) const {
            << "Frequency : " << freqStr << "\n\n"
            << "Cycles : " << clockPtr->cycles() << "\n\n"
            << "Elapsed : " << clockPtr->elapsedMicroseconds() << " us\n";
+}
+
+void Monitor::printEvents(std::ostream& output) const {
+    const system::scheduler::EventScheduler* schedPtr = m_scheduler;
+    if (schedPtr == nullptr && m_cpu != nullptr && m_cpu->systemBus() != nullptr) {
+        schedPtr = &m_cpu->systemBus()->scheduler();
+    }
+    if (schedPtr == nullptr) {
+        output << "No Event Scheduler attached.\n";
+        return;
+    }
+
+    auto events = schedPtr->pendingEvents();
+    if (events.empty()) {
+        output << "No pending events.\n";
+        return;
+    }
+
+    output << "Pending Events\n"
+           << "----------------------------\n"
+           << "ID   Cycle   Description\n\n";
+
+    for (const auto& ev : events) {
+        output << ev.id << "    " << ev.cycle << "     " << (ev.description.empty() ? "Unnamed Event" : ev.description) << "\n\n";
+    }
 }
 
 void Monitor::handleRun(std::string_view args, std::ostream& output) {

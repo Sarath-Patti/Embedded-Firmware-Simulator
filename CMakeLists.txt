@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 1.3.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 1.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,6 +17,7 @@ add_library(embedded_firmware_simulator STATIC
     src/kernel/interrupt_controller.cpp
     src/system/system_bus.cpp
     src/system/clock/simulation_clock.cpp
+    src/system/scheduler/event_scheduler.cpp
     src/cpu/cpu.cpp
     src/cpu/registers/register_file.cpp
     src/firmware/basic_firmware.cpp
@@ -44,14 +45,19 @@ target_link_libraries(firmware_demo PRIVATE embedded_firmware_simulator)
 add_executable(uart_demo examples/uart_demo.cpp)
 target_link_libraries(uart_demo PRIVATE embedded_firmware_simulator)
 
+add_executable(event_scheduler_demo examples/event_scheduler_demo.cpp)
+target_link_libraries(event_scheduler_demo PRIVATE embedded_firmware_simulator)
+
 if(MSVC)
     target_compile_options(simulator_demo PRIVATE /W4)
     target_compile_options(firmware_demo PRIVATE /W4)
     target_compile_options(uart_demo PRIVATE /W4)
+    target_compile_options(event_scheduler_demo PRIVATE /W4)
 else()
     target_compile_options(simulator_demo PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(firmware_demo PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(uart_demo PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(event_scheduler_demo PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 # Testing Configuration
@@ -80,3 +86,4 @@ efs_add_test(monitor_tests tests/test_monitor.cpp MonitorTests)
 efs_add_test(uart_tests tests/test_uart.cpp UARTTests)
 efs_add_test(system_tests tests/test_system_bus.cpp SystemTests)
 efs_add_test(clock_tests tests/test_clock.cpp ClockTests)
+efs_add_test(scheduler_tests tests/test_scheduler.cpp SchedulerTests)

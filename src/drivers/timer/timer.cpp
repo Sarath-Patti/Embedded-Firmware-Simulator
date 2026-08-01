@@ -1,6 +1,7 @@
 #include "drivers/timer/timer.hpp"
 #include "kernel/interrupt_controller.hpp"
 #include "system/clock/simulation_clock.hpp"
+#include "system/scheduler/event_scheduler.hpp"
 #include "common/logger.hpp"
 #include <stdexcept>
 #include <string>
@@ -24,6 +25,7 @@ Timer::Timer(mmio::MMIOBus& bus, common::Address baseAddress)
 }
 
 Timer::~Timer() {
+    cancelScheduledCompareEvent();
     m_bus.unregisterRegister(ctrlAddress());
     m_bus.unregisterRegister(countAddress());
     m_bus.unregisterRegister(compareAddress());
@@ -37,20 +39,24 @@ void Timer::start() {
     if (m_clock != nullptr) {
         m_lastClockCycles = m_clock->cycles();
     }
+    updateScheduledCompareEvent();
 }
 
 void Timer::stop() {
     common::DWord ctrl = m_ctrlRegister->read();
     ctrl &= ~CTRL_ENABLE_BIT;
     m_ctrlRegister->write(ctrl);
+    cancelScheduledCompareEvent();
 }
 
 void Timer::reset() {
+    cancelScheduledCompareEvent();
     m_countRegister->write(0);
     m_statusRegister->write(0);
     if (m_clock != nullptr) {
         m_lastClockCycles = m_clock->cycles();
     }
+    updateScheduledCompareEvent();
 }
 
 void Timer::attachInterruptController(kernel::InterruptController* controller, std::uint8_t interruptId) {
@@ -79,6 +85,64 @@ system::clock::SimulationClock* Timer::clock() const noexcept {
     return m_clock;
 }
 
+void Timer::attachScheduler(system::scheduler::EventScheduler* scheduler) noexcept {
+    m_scheduler = scheduler;
+    updateScheduledCompareEvent();
+}
+
+void Timer::detachScheduler() noexcept {
+    cancelScheduledCompareEvent();
+    m_scheduler = nullptr;
+}
+
+system::scheduler::EventScheduler* Timer::scheduler() const noexcept {
+    return m_scheduler;
+}
+
+void Timer::updateScheduledCompareEvent() {
+    cancelScheduledCompareEvent();
+
+    if (!running() || m_scheduler == nullptr) {
+        return;
+    }
+
+    common::DWord currentCount = counter();
+    common::DWord targetCompare = compare();
+
+    if (currentCount >= targetCompare) {
+        return;
+    }
+
+    common::DWord delta = targetCompare - currentCount;
+    common::QWord currentCycle = (m_clock != nullptr) ? m_clock->cycles() : 0;
+    common::QWord targetCycle = currentCycle + delta;
+
+    m_compareEventId = m_scheduler->schedule([this]() {
+        handleCompareMatch();
+    }, targetCycle, "Timer Compare Match");
+}
+
+void Timer::cancelScheduledCompareEvent() {
+    if (m_compareEventId != 0 && m_scheduler != nullptr) {
+        m_scheduler->cancel(m_compareEventId);
+        m_compareEventId = 0;
+    }
+}
+
+void Timer::handleCompareMatch() {
+    if (!running()) {
+        return;
+    }
+    m_countRegister->write(compare());
+    common::DWord status = m_statusRegister->read();
+    status |= STATUS_MATCH_BIT;
+    m_statusRegister->write(status);
+    stop();
+    if (m_interruptController != nullptr) {
+        m_interruptController->trigger(m_interruptId);
+    }
+}
+
 void Timer::tick() {
     if (!running()) {
         if (m_clock != nullptr) {
@@ -102,19 +166,14 @@ void Timer::tick() {
     currentCount += stepAmount;
     m_countRegister->write(currentCount);
 
-    if (currentCount >= targetCompare) {
-        common::DWord status = m_statusRegister->read();
-        status |= STATUS_MATCH_BIT;
-        m_statusRegister->write(status);
-        stop();
-        if (m_interruptController != nullptr) {
-            m_interruptController->trigger(m_interruptId);
-        }
+    if (m_scheduler == nullptr && currentCount >= targetCompare) {
+        handleCompareMatch();
     }
 }
 
 void Timer::setCompare(common::DWord value) {
     m_compareRegister->write(value);
+    updateScheduledCompareEvent();
 }
 
 common::DWord Timer::compare() const noexcept {
