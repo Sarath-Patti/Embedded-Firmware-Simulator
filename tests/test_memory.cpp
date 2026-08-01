@@ -42,6 +42,7 @@ void test_out_of_range_access() {
         read_threw = true;
     }
     assert(read_threw);
+    (void)read_threw;
 
     // Write past boundary
     bool write_threw = false;
@@ -51,6 +52,7 @@ void test_out_of_range_access() {
         write_threw = true;
     }
     assert(write_threw);
+    (void)write_threw;
 
     // Far out-of-bounds
     bool far_read_threw = false;
@@ -60,6 +62,7 @@ void test_out_of_range_access() {
         far_read_threw = true;
     }
     assert(far_read_threw);
+    (void)far_read_threw;
 
     std::cout << "[PASS] test_out_of_range_access\n";
 }
