@@ -3,6 +3,7 @@
 
 #include "drivers/dma/dma_controller.hpp"
 #include "drivers/gpio/gpio.hpp"
+#include "drivers/spi/spi_controller.hpp"
 #include "drivers/timer/timer.hpp"
 #include "drivers/uart/uart.hpp"
 #include "kernel/interrupt_controller.hpp"
@@ -39,43 +40,43 @@ public:
     /// Accesses the central Event Scheduler (read-only).
     [[nodiscard]] const scheduler::EventScheduler& scheduler() const noexcept;
 
-    /// Sets or attaches the Memory subsystem.
+    /// Sets or updates the Memory subsystem pointer.
     void setMemory(memory::Memory* memory) noexcept;
 
-    /// Returns pointer to attached Memory subsystem.
+    /// Returns attached Memory pointer.
     [[nodiscard]] memory::Memory* memory() const noexcept;
 
-    /// Sets or attaches the MMIO Bus subsystem.
+    /// Sets or updates the MMIO Bus subsystem pointer.
     void setMMIO(mmio::MMIOBus* mmioBus) noexcept;
 
-    /// Returns pointer to attached MMIO Bus subsystem.
+    /// Returns attached MMIO Bus pointer.
     [[nodiscard]] mmio::MMIOBus* mmio() const noexcept;
 
-    /// Sets or attaches the Interrupt Controller.
+    /// Sets or updates the Interrupt Controller pointer.
     void setInterrupts(kernel::InterruptController* interruptController) noexcept;
 
-    /// Returns pointer to attached Interrupt Controller.
+    /// Returns attached Interrupt Controller pointer.
     [[nodiscard]] kernel::InterruptController* interrupts() const noexcept;
 
-    /// Attaches a DMA controller to receive clock tick notifications.
+    /// Attaches DMA Controller to SystemBus.
     bool attachDMA(drivers::dma::DMAController* dma);
 
-    /// Detaches a DMA controller from the system bus.
+    /// Detaches DMA Controller from SystemBus.
     bool detachDMA(drivers::dma::DMAController* dma);
 
-    /// Returns primary attached DMA controller pointer or nullptr.
+    /// Returns pointer to attached DMA Controller (first attached) or nullptr.
     [[nodiscard]] drivers::dma::DMAController* dma() const noexcept;
 
-    /// Returns list of attached DMA controllers.
+    /// Returns all attached DMA controllers.
     [[nodiscard]] const std::vector<drivers::dma::DMAController*>& dmas() const noexcept;
 
-    /// Attaches a hardware timer to receive CPU tick notifications per simulation cycle.
+    /// Attaches Timer to SystemBus.
     bool attachTimer(drivers::timer::Timer* timer);
 
-    /// Detaches a hardware timer from the system bus.
+    /// Detaches Timer from SystemBus.
     bool detachTimer(drivers::timer::Timer* timer);
 
-    /// Returns list of attached hardware timers.
+    /// Returns all attached timers.
     [[nodiscard]] const std::vector<drivers::timer::Timer*>& timers() const noexcept;
 
     /// Advances the Simulation Clock and ticks all attached DMA controllers and hardware timers.
@@ -93,7 +94,13 @@ public:
     /// Returns attached UART peripheral pointer.
     [[nodiscard]] drivers::uart::UART* uart() const noexcept;
 
-    /// Resets all attached peripherals (DMA, GPIO, Timers, UART, Interrupt Controller, Memory, Clock).
+    /// Attaches SPI peripheral.
+    void attachSPI(drivers::spi::SPIController* spi) noexcept;
+
+    /// Returns attached SPI peripheral pointer.
+    [[nodiscard]] drivers::spi::SPIController* spi() const noexcept;
+
+    /// Resets all attached peripherals (DMA, GPIO, Timers, UART, SPI, Interrupt Controller, Memory, Clock).
     void reset();
 
 private:
@@ -106,6 +113,7 @@ private:
     std::vector<drivers::timer::Timer*> m_timers;
     drivers::gpio::GPIO* m_gpio{nullptr};
     drivers::uart::UART* m_uart{nullptr};
+    drivers::spi::SPIController* m_spi{nullptr};
 };
 
 } // namespace efs::system

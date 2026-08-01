@@ -197,6 +197,14 @@ drivers::uart::UART* SystemBus::uart() const noexcept {
     return m_uart;
 }
 
+void SystemBus::attachSPI(drivers::spi::SPIController* spi) noexcept {
+    m_spi = spi;
+}
+
+drivers::spi::SPIController* SystemBus::spi() const noexcept {
+    return m_spi;
+}
+
 void SystemBus::reset() {
     for (auto* dma : m_dmas) {
         if (dma != nullptr) {
@@ -213,6 +221,9 @@ void SystemBus::reset() {
     }
     if (m_uart != nullptr) {
         m_uart->reset();
+    }
+    if (m_spi != nullptr) {
+        m_spi->reset();
     }
     if (m_interruptController != nullptr) {
         m_interruptController->reset();
