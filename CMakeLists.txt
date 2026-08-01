@@ -1,9 +1,25 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 1.5.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 1.5.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Option to treat compiler warnings as errors (default OFF for local development, ON in CI)
+option(EFS_ENABLE_WERROR "Treat warnings as errors" OFF)
+
+set(EFS_WARNING_FLAGS)
+if(MSVC)
+    set(EFS_WARNING_FLAGS /W4)
+    if(EFS_ENABLE_WERROR)
+        list(APPEND EFS_WARNING_FLAGS /WX)
+    endif()
+else()
+    set(EFS_WARNING_FLAGS -Wall -Wextra -Wpedantic)
+    if(EFS_ENABLE_WERROR)
+        list(APPEND EFS_WARNING_FLAGS -Werror)
+    endif()
+endif()
 
 # Static library target for the simulator
 add_library(embedded_firmware_simulator STATIC
@@ -32,41 +48,28 @@ target_include_directories(embedded_firmware_simulator PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-if(MSVC)
-    target_compile_options(embedded_firmware_simulator PRIVATE /W4)
-else()
-    target_compile_options(embedded_firmware_simulator PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+target_compile_options(embedded_firmware_simulator PRIVATE ${EFS_WARNING_FLAGS})
 
 # Executable targets
 add_executable(simulator_demo src/main.cpp)
 target_link_libraries(simulator_demo PRIVATE embedded_firmware_simulator)
+target_compile_options(simulator_demo PRIVATE ${EFS_WARNING_FLAGS})
 
 add_executable(firmware_demo examples/firmware_demo.cpp)
 target_link_libraries(firmware_demo PRIVATE embedded_firmware_simulator)
+target_compile_options(firmware_demo PRIVATE ${EFS_WARNING_FLAGS})
 
 add_executable(uart_demo examples/uart_demo.cpp)
 target_link_libraries(uart_demo PRIVATE embedded_firmware_simulator)
+target_compile_options(uart_demo PRIVATE ${EFS_WARNING_FLAGS})
 
 add_executable(event_scheduler_demo examples/event_scheduler_demo.cpp)
 target_link_libraries(event_scheduler_demo PRIVATE embedded_firmware_simulator)
+target_compile_options(event_scheduler_demo PRIVATE ${EFS_WARNING_FLAGS})
 
 add_executable(hal_demo examples/hal_demo.cpp)
 target_link_libraries(hal_demo PRIVATE embedded_firmware_simulator)
-
-if(MSVC)
-    target_compile_options(simulator_demo PRIVATE /W4)
-    target_compile_options(firmware_demo PRIVATE /W4)
-    target_compile_options(uart_demo PRIVATE /W4)
-    target_compile_options(event_scheduler_demo PRIVATE /W4)
-    target_compile_options(hal_demo PRIVATE /W4)
-else()
-    target_compile_options(simulator_demo PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(firmware_demo PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(uart_demo PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(event_scheduler_demo PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(hal_demo PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+target_compile_options(hal_demo PRIVATE ${EFS_WARNING_FLAGS})
 
 # Testing Configuration
 enable_testing()
@@ -74,11 +77,7 @@ enable_testing()
 function(efs_add_test TARGET_NAME SOURCE_FILE TEST_NAME)
     add_executable(${TARGET_NAME} ${SOURCE_FILE})
     target_link_libraries(${TARGET_NAME} PRIVATE embedded_firmware_simulator)
-    if(MSVC)
-        target_compile_options(${TARGET_NAME} PRIVATE /W4)
-    else()
-        target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-    endif()
+    target_compile_options(${TARGET_NAME} PRIVATE ${EFS_WARNING_FLAGS})
     add_test(NAME ${TEST_NAME} COMMAND ${TARGET_NAME})
 endfunction()
 

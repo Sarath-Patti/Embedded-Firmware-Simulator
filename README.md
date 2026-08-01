@@ -1,6 +1,7 @@
 # Embedded Firmware Simulator
 
-[![Version](https://img.shields.io/badge/version-v1.5.0-blue.svg)](include/common/version.hpp)
+[![Build Status](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions)
+[![Version](https://img.shields.io/badge/version-v1.5.1-blue.svg)](include/common/version.hpp)
 [![Standard](https://img.shields.io/badge/c%2B%2B-20-green.svg)](CMakeLists.txt)
 [![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
 
@@ -12,7 +13,7 @@ A production-quality, modular C++20 simulator architecture for embedded firmware
 
 - [Overview](#overview)
 - [Motivation](#motivation)
-- [Key Features (v1.5)](#key-features-v15)
+- [Key Features (v1.5.1)](#key-features-v151)
 - [System Architecture](#system-architecture)
 - [Hardware Abstraction Layer (HAL)](#hardware-abstraction-layer-hal)
 - [Firmware Development Model](#firmware-development-model)
@@ -22,6 +23,7 @@ A production-quality, modular C++20 simulator architecture for embedded firmware
 - [UART Peripheral Architecture](#uart-peripheral-architecture)
   - [Register Map](#register-map)
   - [FIFO Design](#fifo-design)
+- [Continuous Integration & Quality Gates](#continuous-integration--quality-gates)
 - [Repository Layout](#repository-layout)
 - [Build Instructions](#build-instructions)
 - [Running the Simulator](#running-the-simulator)
@@ -50,8 +52,9 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 
 ---
 
-## Key Features (v1.5)
+## Key Features (v1.5.1)
 
+- **Continuous Integration Pipeline**: Automated multi-platform GitHub Actions CI matrix testing across Ubuntu, macOS, and Windows with strict compiler warning enforcement (`-Werror` / `/WX`).
 - **Hardware Abstraction Layer (`efs::hal`)**: Provides clean, stable `GPIOHAL`, `TimerHAL`, and `UARTHAL` abstractions hiding raw peripheral implementation details from firmware.
 - **Firmware Development Model**: Standardized application lifecycle (`initialize`, `execute`, `shutdown`) operating exclusively via HAL interfaces without direct peripheral coupling.
 - **Event Scheduler (`efs::system::scheduler::EventScheduler`)**: Deterministic cycle-driven event scheduler for executing callbacks at specific simulation times with strict FIFO ordering for simultaneous events.
@@ -112,6 +115,39 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 
 ---
 
+## Continuous Integration & Quality Gates
+
+The project maintains a production-grade GitHub Actions CI pipeline (`.github/workflows/ci.yml`):
+
+```text
+               GitHub Push / Pull Request
+                           │
+                           ▼
+          ┌────────────────────────────────┐
+          │  Multi-Platform CI Matrix Loop │
+          ├────────────────────────────────┤
+          │ - Ubuntu Latest (GCC/Clang)    │
+          │ - macOS Latest (Apple Clang)   │
+          │ - Windows Latest (MSVC)        │
+          └────────────────┬───────────────┘
+                           │
+                           ▼
+          ┌────────────────────────────────┐
+          │   Quality Gate Checks (-Werror)│
+          ├────────────────────────────────┤
+          │ 1. CMake Configuration         │
+          │ 2. Parallel Multi-Target Build │
+          │ 3. All Demo Executables Built  │
+          │ 4. CTest Suite (14 Test Suites)│
+          └────────────────────────────────┘
+```
+
+- **Cross-Platform Matrix**: Automated builds on Linux, macOS, and Windows.
+- **Strict Warning Management**: Compiles with `-Wall -Wextra -Wpedantic` (GCC/Clang) or `/W4` (MSVC). Passing `-DEFS_ENABLE_WERROR=ON` in CI treats warnings as errors without breaking local developer flexibility.
+- **Immediate Failure Enforcement**: Tests run via `ctest --output-on-failure`, halting the build immediately if any assertion or test fails.
+
+---
+
 ## Hardware Abstraction Layer (HAL)
 
 The Hardware Abstraction Layer (`efs::hal`) provides a high-level, production-grade interface between firmware and hardware peripherals:
@@ -124,112 +160,6 @@ The Hardware Abstraction Layer (`efs::hal`) provides a high-level, production-gr
         ┌────────────────┼────────────────┐
         ▼                ▼                ▼
      GPIOHAL          TimerHAL         UARTHAL
-  configureOutput()    start()        writeByte()
-  configureInput()     stop()         readByte()
-  write()              reset()        hasData()
-  read()               counter()      setBaudRate()
-  toggle()             setCompare()
-```
-
-- **`GPIOHAL`**: Wraps GPIO hardware pin configuration, reading, writing, and toggling.
-- **`TimerHAL`**: Wraps hardware timer controls, counter querying, and compare match configuration.
-- **`UARTHAL`**: Wraps serial byte transmission, reception, status polling, and baud rate configuration.
-
----
-
-## Firmware Development Model
-
-Firmware applications inherit from `efs::firmware::Firmware` and interact with peripherals **exclusively** through HAL abstractions:
-
-```cpp
-#include "hal/hal.hpp"
-#include "firmware/firmware.hpp"
-
-class UserFirmware : public efs::firmware::Firmware {
-public:
-    UserFirmware(efs::hal::GPIOHAL& gpio, efs::hal::UARTHAL& uart)
-        : m_gpio(gpio), m_uart(uart) {}
-
-    void initialize() override {
-        m_gpio.configureOutput(13);
-        m_uart.setBaudRate(115200);
-        m_uart.enable();
-    }
-
-    void execute() override {
-        m_gpio.toggle(13);
-        m_uart.writeByte('A');
-    }
-
-    void shutdown() override {
-        m_gpio.write(13, false);
-    }
-
-private:
-    efs::hal::GPIOHAL& m_gpio;
-    efs::hal::UARTHAL& m_uart;
-};
-```
-
----
-
-## Event Scheduler Architecture
-
-The `EventScheduler` (`efs::system::scheduler::EventScheduler`) provides a deterministic mechanism to schedule and execute callbacks at precise simulation cycles:
-
-```text
-               SystemBus / SimulationClock
-                            │
-                            ▼
-                     EventScheduler
-             ┌──────────────┼──────────────┐
-             ▼              ▼              ▼
-       Timer Compare  ADC Complete  Custom Callbacks
-```
-
-- **Scheduling & Cancellation**: `schedule(callback, cycle, description)` returns a unique `EventId`. Events can be dynamically canceled via `cancel(eventId)`.
-- **FIFO Execution Order**: Multiple events scheduled for the same simulation cycle execute in strict FIFO order (sorted by insertion ID).
-- **Timer Integration**: Hardware Timers schedule compare match callbacks with the `EventScheduler` instead of polling every cycle.
-
----
-
-## Simulation Clock Architecture
-
-The `SimulationClock` (`efs::system::clock::SimulationClock`) provides a deterministic, zero-overhead notion of simulated time for the entire system:
-
-- **Configurable Frequency**: Default frequency of 1 MHz (configurable to any non-zero Hz).
-- **Cycle & Time Tracking**: Maintains total cycle count and provides conversions for elapsed nanoseconds (`elapsedNanoseconds()`), microseconds (`elapsedMicroseconds()`), and milliseconds (`elapsedMilliseconds()`).
-- **Peripheral Integration**: Peripherals calculate cycle deltas to update state deterministically without relying on host wall-clock time or sleeping threads.
-
----
-
-## System Bus Architecture
-
-The `SystemBus` (`efs::system::SystemBus`) acts as the primary interconnect in the simulator hierarchy. It decouples the CPU execution engine from individual memory and peripheral details:
-
-- **Centralized Subsystem Management**: Provides high-cohesion accessors (`memory()`, `mmio()`, `interrupts()`, `clock()`, `scheduler()`) for primary platform services.
-- **Peripheral Registration**: Allows hardware peripherals (`GPIO`, `Timer`, `UART`) to register cleanly without modifying peripheral implementations or public APIs.
-- **Timer Ticking**: Centralizes cycle-based timer ticking (`tickTimers()`) invoked directly by the CPU execution loop.
-
----
-
-## UART Peripheral Architecture
-
-The UART (Universal Asynchronous Receiver-Transmitter) peripheral provides serial data transmission and reception capability mapped via the MMIO bus.
-
-```text
-                     MMIO Bus
-                         │
-                         ▼
-                  UART Peripheral
-         ┌────────────────────────────┐
-         │ DATA Register    (0x00)    │
-         │ STATUS Register  (0x04)    │
-         │ CONTROL Register (0x08)    │
-         │ BAUD Register    (0x0C)    │
-         └────────────────────────────┘
-                  │              │
-              TX FIFO        RX FIFO
 ```
 
 ---
@@ -238,30 +168,12 @@ The UART (Universal Asynchronous Receiver-Transmitter) peripheral provides seria
 
 ```text
 Embedded-Firmware-Simulator/
+├── .github/                  # GitHub Actions CI workflow definitions
+│   └── workflows/
+│       └── ci.yml            # CI build & test pipeline matrix
 ├── include/                  # Public C++ header interfaces
-│   ├── common/               # Types, logger, and project versioning
-│   ├── cpu/                  # CPU cycle engine & RegisterFile (cpu/registers/)
-│   ├── drivers/              # Hardware peripheral drivers (gpio/, timer/, uart/)
-│   ├── firmware/             # Firmware interface & BasicFirmware
-│   ├── hal/                  # Hardware Abstraction Layer (gpio_hal, timer_hal, uart_hal)
-│   ├── kernel/               # Priority Interrupt Controller
-│   ├── memory/               # Byte-addressable Memory subsystem
-│   ├── mmio/                 # Memory-Mapped I/O Register & MMIOBus
-│   ├── monitor/              # Interactive Monitor & CLI debugger
-│   └── system/               # SystemBus, SimulationClock (clock/), EventScheduler (scheduler/)
 ├── src/                      # Implementation files matching include/ structure
-│   ├── common/
-│   ├── cpu/
-│   ├── drivers/
-│   ├── firmware/
-│   ├── hal/
-│   ├── kernel/
-│   ├── memory/
-│   ├── mmio/
-│   ├── monitor/
-│   ├── system/
-│   └── main.cpp              # Interactive simulator demo entry point
-├── examples/                 # Sample applications (firmware_demo.cpp, uart_demo.cpp, event_scheduler_demo.cpp, hal_demo.cpp)
+├── examples/                 # Sample applications (firmware_demo, uart_demo, event_scheduler_demo, hal_demo)
 ├── tests/                    # CTest unit test suite (14 test suites)
 ├── CMakeLists.txt            # CMake build system configuration
 └── README.md                 # Project documentation
@@ -286,6 +198,15 @@ cmake ..
 
 # Build static library, main simulator demo, examples, and test executables
 cmake --build .
+```
+
+### Enabling Warnings as Errors (Strict Quality Mode)
+
+To match CI strict compiler warning checks locally, pass `-DEFS_ENABLE_WERROR=ON` during CMake configuration:
+
+```bash
+cmake -B build -DEFS_ENABLE_WERROR=ON
+cmake --build build
 ```
 
 ---
@@ -314,14 +235,16 @@ cmake --build .
 Execute the full CTest unit test suite covering all 14 project test modules:
 
 ```bash
+# Navigate to build directory and run tests
+cd build
 ctest --output-on-failure
 ```
 
----
+Alternatively, from the repository root:
 
-## Interactive Monitor CLI
-
-The `Monitor` subsystem provides a non-blocking interactive command-line interface to control simulation execution and inspect internal processor and peripheral state.
+```bash
+ctest --test-dir build --output-on-failure
+```
 
 ---
 
@@ -330,6 +253,7 @@ The `Monitor` subsystem provides a non-blocking interactive command-line interfa
 - **Core Subsystems**: HAL (`GPIOHAL`, `TimerHAL`, `UARTHAL`), Event Scheduler, Simulation Clock, System Bus, Memory, MMIO, GPIO, Timer, UART, Interrupt Controller, CPU, Register File, Firmware, Interactive Monitor
 - **Peripherals Modeled**: 3 (`GPIO`, `Hardware Timer`, `UART Serial Interface`)
 - **Unit Test Suites**: 14 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `RegisterTests`, `MonitorTests`, `UARTTests`, `SystemTests`, `ClockTests`, `SchedulerTests`, `HALTests`)
+- **CI Test Platforms**: Ubuntu, macOS, Windows
 - **Language Standard**: Modern C++20
 
 ---
@@ -351,6 +275,7 @@ The `Monitor` subsystem provides a non-blocking interactive command-line interfa
 - [x] **v1.3 – Simulation Clock**: Centralized deterministic timing source for simulation cycles and timing calculations.
 - [x] **v1.4 – Event Scheduler**: Deterministic cycle-driven event scheduler for callback execution and peripheral timing.
 - [x] **v1.5 – Hardware Abstraction Layer**: Clean, stable `GPIOHAL`, `TimerHAL`, and `UARTHAL` abstractions for firmware peripheral control.
+- [x] **v1.5.1 – Continuous Integration & Quality Gates**: Cross-platform GitHub Actions CI matrix pipeline, `-Werror` quality gates, and build status reporting.
 
 ---
 
