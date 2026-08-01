@@ -8,6 +8,7 @@
 #include "kernel/interrupt_controller.hpp"
 #include "memory/memory.hpp"
 #include "mmio/mmio_bus.hpp"
+#include "system/clock/simulation_clock.hpp"
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -23,7 +24,8 @@ public:
             drivers::gpio::GPIO* gpio = nullptr,
             drivers::timer::Timer* timer = nullptr,
             kernel::InterruptController* interruptController = nullptr,
-            drivers::uart::UART* uart = nullptr);
+            drivers::uart::UART* uart = nullptr,
+            system::clock::SimulationClock* clock = nullptr);
     ~Monitor() = default;
 
     Monitor(const Monitor&) = delete;
@@ -52,6 +54,9 @@ public:
     /// Attaches or updates the UART peripheral reference.
     void setUART(drivers::uart::UART* uart) noexcept;
 
+    /// Attaches or updates the SimulationClock reference.
+    void setClock(system::clock::SimulationClock* clock) noexcept;
+
     /// Executes a single command string non-blockingly. Returns false if 'exit'/'quit' command is issued.
     bool executeCommand(std::string_view commandLine, std::ostream& output = std::cout);
 
@@ -70,6 +75,7 @@ private:
     void printMemory(std::string_view args, std::ostream& output) const;
     void printMMIO(std::ostream& output) const;
     void printUART(std::ostream& output) const;
+    void printClock(std::ostream& output) const;
     void handleRun(std::string_view args, std::ostream& output);
 
     cpu::CPU* m_cpu{nullptr};
@@ -79,6 +85,7 @@ private:
     drivers::timer::Timer* m_timer{nullptr};
     kernel::InterruptController* m_interruptController{nullptr};
     drivers::uart::UART* m_uart{nullptr};
+    system::clock::SimulationClock* m_clock{nullptr};
 };
 
 } // namespace efs::monitor

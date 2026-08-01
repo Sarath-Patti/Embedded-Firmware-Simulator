@@ -12,6 +12,14 @@ SystemBus::SystemBus(memory::Memory* memory,
       m_interruptController(interruptController) {
 }
 
+clock::SimulationClock& SystemBus::clock() noexcept {
+    return m_clock;
+}
+
+const clock::SimulationClock& SystemBus::clock() const noexcept {
+    return m_clock;
+}
+
 void SystemBus::setMemory(memory::Memory* memory) noexcept {
     m_memory = memory;
 }
@@ -46,6 +54,7 @@ bool SystemBus::attachTimer(drivers::timer::Timer* timer) {
         common::Logger::warning("Timer already attached to SystemBus");
         return false;
     }
+    timer->attachClock(&m_clock);
     m_timers.push_back(timer);
     return true;
 }
@@ -59,6 +68,7 @@ bool SystemBus::detachTimer(drivers::timer::Timer* timer) {
         common::Logger::warning("Attempted to detach unattached timer from SystemBus");
         return false;
     }
+    timer->detachClock();
     m_timers.erase(it);
     return true;
 }
@@ -68,6 +78,7 @@ const std::vector<drivers::timer::Timer*>& SystemBus::timers() const noexcept {
 }
 
 void SystemBus::tickTimers() {
+    m_clock.tick();
     for (auto* timer : m_timers) {
         if (timer != nullptr) {
             timer->tick();

@@ -10,6 +10,10 @@ namespace efs::kernel {
 class InterruptController;
 }
 
+namespace efs::system::clock {
+class SimulationClock;
+}
+
 namespace efs::drivers::timer {
 
 class Timer {
@@ -38,6 +42,10 @@ public:
     void attachInterruptController(kernel::InterruptController* controller, std::uint8_t interruptId);
     void detachInterruptController() noexcept;
 
+    void attachClock(system::clock::SimulationClock* clock) noexcept;
+    void detachClock() noexcept;
+    [[nodiscard]] system::clock::SimulationClock* clock() const noexcept;
+
     void setCompare(common::DWord value);
     [[nodiscard]] common::DWord compare() const noexcept;
     [[nodiscard]] common::DWord counter() const noexcept;
@@ -61,6 +69,9 @@ private:
 
     kernel::InterruptController* m_interruptController{nullptr};
     std::uint8_t m_interruptId{0};
+
+    system::clock::SimulationClock* m_clock{nullptr};
+    common::QWord m_lastClockCycles{0};
 };
 
 } // namespace efs::drivers::timer

@@ -1,5 +1,6 @@
 #include "drivers/timer/timer.hpp"
 #include "kernel/interrupt_controller.hpp"
+#include "system/clock/simulation_clock.hpp"
 #include "common/logger.hpp"
 #include <stdexcept>
 #include <string>
@@ -33,6 +34,9 @@ void Timer::start() {
     common::DWord ctrl = m_ctrlRegister->read();
     ctrl |= CTRL_ENABLE_BIT;
     m_ctrlRegister->write(ctrl);
+    if (m_clock != nullptr) {
+        m_lastClockCycles = m_clock->cycles();
+    }
 }
 
 void Timer::stop() {
@@ -44,6 +48,9 @@ void Timer::stop() {
 void Timer::reset() {
     m_countRegister->write(0);
     m_statusRegister->write(0);
+    if (m_clock != nullptr) {
+        m_lastClockCycles = m_clock->cycles();
+    }
 }
 
 void Timer::attachInterruptController(kernel::InterruptController* controller, std::uint8_t interruptId) {
@@ -56,15 +63,43 @@ void Timer::detachInterruptController() noexcept {
     m_interruptId = 0;
 }
 
+void Timer::attachClock(system::clock::SimulationClock* clock) noexcept {
+    m_clock = clock;
+    if (m_clock != nullptr) {
+        m_lastClockCycles = m_clock->cycles();
+    }
+}
+
+void Timer::detachClock() noexcept {
+    m_clock = nullptr;
+    m_lastClockCycles = 0;
+}
+
+system::clock::SimulationClock* Timer::clock() const noexcept {
+    return m_clock;
+}
+
 void Timer::tick() {
     if (!running()) {
+        if (m_clock != nullptr) {
+            m_lastClockCycles = m_clock->cycles();
+        }
         return;
+    }
+
+    common::DWord stepAmount = 1;
+    if (m_clock != nullptr) {
+        common::QWord currentCycles = m_clock->cycles();
+        if (currentCycles > m_lastClockCycles) {
+            stepAmount = static_cast<common::DWord>(currentCycles - m_lastClockCycles);
+        }
+        m_lastClockCycles = currentCycles;
     }
 
     common::DWord currentCount = m_countRegister->read();
     common::DWord targetCompare = m_compareRegister->read();
 
-    currentCount++;
+    currentCount += stepAmount;
     m_countRegister->write(currentCount);
 
     if (currentCount >= targetCompare) {

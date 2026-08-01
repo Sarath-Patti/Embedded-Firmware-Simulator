@@ -35,14 +35,16 @@ Monitor::Monitor(cpu::CPU* cpu,
                  drivers::gpio::GPIO* gpio,
                  drivers::timer::Timer* timer,
                  kernel::InterruptController* interruptController,
-                 drivers::uart::UART* uart)
+                 drivers::uart::UART* uart,
+                 system::clock::SimulationClock* clock)
     : m_cpu(cpu),
       m_memory(memory),
       m_mmioBus(mmioBus),
       m_gpio(gpio),
       m_timer(timer),
       m_interruptController(interruptController),
-      m_uart(uart) {
+      m_uart(uart),
+      m_clock(clock) {
 }
 
 void Monitor::setCPU(cpu::CPU* cpu) noexcept {
@@ -71,6 +73,10 @@ void Monitor::setInterruptController(kernel::InterruptController* interruptContr
 
 void Monitor::setUART(drivers::uart::UART* uart) noexcept {
     m_uart = uart;
+}
+
+void Monitor::setClock(system::clock::SimulationClock* clock) noexcept {
+    m_clock = clock;
 }
 
 bool Monitor::executeCommand(std::string_view commandLine, std::ostream& output) {
@@ -155,6 +161,11 @@ bool Monitor::executeCommand(std::string_view commandLine, std::ostream& output)
         return true;
     }
 
+    if (cmd == "clock") {
+        printClock(output);
+        return true;
+    }
+
     output << "Unknown command: '" << cmdWord << "'. Type 'help' for supported commands.\n";
     return true;
 }
@@ -190,7 +201,8 @@ void Monitor::printHelp(std::ostream& output) const {
            << "  interrupts            Display interrupt controller status.\n"
            << "  memory <addr> <cnt>   Display memory bytes in hex.\n"
            << "  mmio                  Display all registered MMIO addresses.\n"
-           << "  uart                  Display UART peripheral state.\n";
+           << "  uart                  Display UART peripheral state.\n"
+           << "  clock                 Display simulation clock state.\n";
 }
 
 void Monitor::printRegs(std::ostream& output) const {
@@ -329,6 +341,33 @@ void Monitor::printUART(std::ostream& output) const {
            << "STATUS :\n\n"
            << "TX Empty : " << (m_uart->txEmpty() ? "YES" : "NO") << "\n\n"
            << "RX Available : " << (m_uart->hasReceivedData() ? "YES" : "NO") << "\n";
+}
+
+void Monitor::printClock(std::ostream& output) const {
+    const system::clock::SimulationClock* clockPtr = m_clock;
+    if (clockPtr == nullptr && m_cpu != nullptr && m_cpu->systemBus() != nullptr) {
+        clockPtr = &m_cpu->systemBus()->clock();
+    }
+    if (clockPtr == nullptr) {
+        output << "No Simulation Clock attached.\n";
+        return;
+    }
+
+    std::string freqStr;
+    auto freq = clockPtr->frequency();
+    if (freq % 1'000'000 == 0) {
+        freqStr = std::to_string(freq / 1'000'000) + " MHz";
+    } else if (freq % 1'000 == 0) {
+        freqStr = std::to_string(freq / 1'000) + " kHz";
+    } else {
+        freqStr = std::to_string(freq) + " Hz";
+    }
+
+    output << "Clock\n"
+           << "---------------------\n\n"
+           << "Frequency : " << freqStr << "\n\n"
+           << "Cycles : " << clockPtr->cycles() << "\n\n"
+           << "Elapsed : " << clockPtr->elapsedMicroseconds() << " us\n";
 }
 
 void Monitor::handleRun(std::string_view args, std::ostream& output) {

@@ -7,11 +7,12 @@
 #include "kernel/interrupt_controller.hpp"
 #include "memory/memory.hpp"
 #include "mmio/mmio_bus.hpp"
+#include "system/clock/simulation_clock.hpp"
 #include <vector>
 
 namespace efs::system {
 
-/// Central System Bus connecting Memory, MMIO Bus, Interrupt Controller, and Peripherals.
+/// Central System Bus connecting Memory, MMIO Bus, Interrupt Controller, Simulation Clock, and Peripherals.
 class SystemBus {
 public:
     SystemBus(memory::Memory* memory = nullptr,
@@ -23,6 +24,12 @@ public:
     SystemBus& operator=(const SystemBus&) = delete;
     SystemBus(SystemBus&&) noexcept = default;
     SystemBus& operator=(SystemBus&&) noexcept = default;
+
+    /// Accesses the central Simulation Clock (mutable).
+    [[nodiscard]] clock::SimulationClock& clock() noexcept;
+
+    /// Accesses the central Simulation Clock (read-only).
+    [[nodiscard]] const clock::SimulationClock& clock() const noexcept;
 
     /// Sets or attaches the Memory subsystem.
     void setMemory(memory::Memory* memory) noexcept;
@@ -51,7 +58,7 @@ public:
     /// Returns list of attached hardware timers.
     [[nodiscard]] const std::vector<drivers::timer::Timer*>& timers() const noexcept;
 
-    /// Ticks all attached hardware timers.
+    /// Advances the Simulation Clock and ticks all attached hardware timers.
     void tickTimers();
 
     /// Attaches GPIO peripheral.
@@ -70,6 +77,7 @@ private:
     memory::Memory* m_memory{nullptr};
     mmio::MMIOBus* m_mmioBus{nullptr};
     kernel::InterruptController* m_interruptController{nullptr};
+    clock::SimulationClock m_clock;
     std::vector<drivers::timer::Timer*> m_timers;
     drivers::gpio::GPIO* m_gpio{nullptr};
     drivers::uart::UART* m_uart{nullptr};

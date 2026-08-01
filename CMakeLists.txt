@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 1.2.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 1.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,6 +16,7 @@ add_library(embedded_firmware_simulator STATIC
     src/drivers/uart/uart.cpp
     src/kernel/interrupt_controller.cpp
     src/system/system_bus.cpp
+    src/system/clock/simulation_clock.cpp
     src/cpu/cpu.cpp
     src/cpu/registers/register_file.cpp
     src/firmware/basic_firmware.cpp
@@ -78,3 +79,4 @@ efs_add_test(register_tests tests/test_register_file.cpp RegisterTests)
 efs_add_test(monitor_tests tests/test_monitor.cpp MonitorTests)
 efs_add_test(uart_tests tests/test_uart.cpp UARTTests)
 efs_add_test(system_tests tests/test_system_bus.cpp SystemTests)
+efs_add_test(clock_tests tests/test_clock.cpp ClockTests)
