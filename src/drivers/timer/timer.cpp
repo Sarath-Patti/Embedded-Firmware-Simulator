@@ -50,13 +50,13 @@ void Timer::stop() {
 }
 
 void Timer::reset() {
-    cancelScheduledEvent();
-    m_countRegister->write(0);
-    m_statusRegister->write(0);
+    stop();
+    m_countRegister->reset();
+    m_statusRegister->reset();
+    m_ctrlRegister->reset();
     if (m_clock != nullptr) {
         m_lastClockCycles = m_clock->cycles();
     }
-    updateScheduledEvent();
 }
 
 void Timer::attachInterruptController(kernel::InterruptController* controller, std::uint8_t interruptId) {
