@@ -19,8 +19,10 @@ public:
     ~BasicFirmware() override;
 
     void initialize() override;
+    void update() override;
     void execute() override;
     void shutdown() override;
+    void reset() override;
 
     [[nodiscard]] common::Size executionCount() const noexcept;
     [[nodiscard]] bool isInitialized() const noexcept;

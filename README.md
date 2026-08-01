@@ -1,62 +1,29 @@
 # Embedded Firmware Simulator
 
-[![Build Status](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions)
-[![Version](https://img.shields.io/badge/version-v1.5.1-blue.svg)](include/common/version.hpp)
-[![Standard](https://img.shields.io/badge/c%2B%2B-20-green.svg)](CMakeLists.txt)
-[![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
+[![CI Status](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml)
 
-A production-quality, modular C++20 simulator architecture for embedded firmware development, hardware peripheral modeling, interrupt management, and interactive system debugging.
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Motivation](#motivation)
-- [Key Features (v1.5.1)](#key-features-v151)
-- [System Architecture](#system-architecture)
-- [Hardware Abstraction Layer (HAL)](#hardware-abstraction-layer-hal)
-- [Firmware Development Model](#firmware-development-model)
-- [Event Scheduler Architecture](#event-scheduler-architecture)
-- [Simulation Clock Architecture](#simulation-clock-architecture)
-- [System Bus Architecture](#system-bus-architecture)
-- [UART Peripheral Architecture](#uart-peripheral-architecture)
-  - [Register Map](#register-map)
-  - [FIFO Design](#fifo-design)
-- [Continuous Integration & Quality Gates](#continuous-integration--quality-gates)
-- [Repository Layout](#repository-layout)
-- [Build Instructions](#build-instructions)
-- [Running the Simulator](#running-the-simulator)
-- [Running Tests](#running-tests)
-- [Interactive Monitor CLI](#interactive-monitor-cli)
-  - [Supported Commands](#supported-commands)
-  - [Example Session](#example-session)
-- [Project Statistics](#project-statistics)
-- [Milestone Roadmap](#milestone-roadmap)
-- [Future Work](#future-work)
-- [License](#license)
+A high-performance, modular **C++20 Embedded Firmware Simulator** designed for bare-metal firmware development, hardware abstraction layer (HAL) validation, hardware peripheral simulation, deterministic timing analysis, and real-time interactive debugging without physical hardware.
 
 ---
 
 ## Overview
 
-The **Embedded Firmware Simulator** provides a lightweight, highly extensible C++20 framework designed to simulate an embedded microcontroller environment on host workstations. The platform decouples physical hardware dependencies from firmware design, enabling hardware driver development, interrupt handling verification, cycle-accurate simulation, and memory/register observation with zero external hardware requirements.
+Developing and testing embedded firmware on physical hardware is often constrained by limited debugging visibility, slow flashing cycles, complex hardware availability, and non-deterministic timing environments.
+
+The **Embedded Firmware Simulator** solves these challenges by providing a modular, C++20 simulated system architecture. Hardware peripherals expose standardized MMIO registers, the kernel dispatches priority interrupts, the CPU coordinates cycle simulation steps, a cycle-driven Event Scheduler handles asynchronous peripheral events, a Hardware Abstraction Layer (HAL) isolates firmware from hardware details, a central FirmwareManager manages firmware application lifecycles, and an interactive monitor CLI gives developers complete visibility into system state in real time.
 
 ---
 
-## Motivation
+## Key Features (v1.6.0)
 
-Developing embedded software typically requires physical microcontroller targets, hardware debug probes (JTAG/SWD), and board support packages. Hardware availability bottlenecks, slow flashing workflows, and limited observability often hinder rapid firmware iteration.
-
-The **Embedded Firmware Simulator** solves these challenges by providing a modular, C++20 simulated system architecture. Hardware peripherals expose standardized MMIO registers, the kernel dispatches priority interrupts, the CPU coordinates cycle simulation steps, and an interactive monitor CLI gives developers complete visibility into system state in real time.
-
----
-
-## Key Features (v1.5.1)
-
+- **Firmware Application Framework (`efs::firmware::FirmwareManager`)**: Centralized manager decoupling multiple firmware applications from hardware and CPU execution, providing active application selection and lifecycle orchestration.
+- **Firmware Lifecycle Interface (`efs::firmware::Firmware`)**: Standardized lifecycle contract (`initialize`, `update`, `shutdown`, `reset`) operating strictly through Hardware Abstraction Layer (HAL) interfaces without direct peripheral coupling.
+- **Concrete Firmware Applications**:
+  - `BasicFirmware`: Simple GPIO toggling firmware operating via `GPIOHAL`.
+  - `TimerBlinkFirmware`: Hardware timer-driven LED blinking firmware operating via `GPIOHAL` and `TimerHAL`.
+  - `UARTEchoFirmware`: Automatic serial communication echo firmware operating via `UARTHAL`.
 - **Continuous Integration Pipeline**: Automated multi-platform GitHub Actions CI matrix testing across Ubuntu, macOS, and Windows with strict compiler warning enforcement (`-Werror` / `/WX`).
 - **Hardware Abstraction Layer (`efs::hal`)**: Provides clean, stable `GPIOHAL`, `TimerHAL`, and `UARTHAL` abstractions hiding raw peripheral implementation details from firmware.
-- **Firmware Development Model**: Standardized application lifecycle (`initialize`, `execute`, `shutdown`) operating exclusively via HAL interfaces without direct peripheral coupling.
 - **Event Scheduler (`efs::system::scheduler::EventScheduler`)**: Deterministic cycle-driven event scheduler for executing callbacks at specific simulation times with strict FIFO ordering for simultaneous events.
 - **Simulation Clock (`efs::system::clock::SimulationClock`)**: Centralized deterministic timing source maintaining simulated cycle counts and calculating elapsed nanoseconds, microseconds, and milliseconds.
 - **System Bus Architecture (`efs::system::SystemBus`)**: Centralized communication layer interconnecting CPU, Memory, MMIO Bus, Interrupt Controller, Simulation Clock, Event Scheduler, and Hardware Peripherals.
@@ -66,8 +33,7 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 - **Hardware Timer Peripheral (`efs::drivers::timer::Timer`)**: Configurable hardware timer modeling Control (CTRL), Counter (COUNT), Compare (COMPARE), and Status (STATUS) registers with match interrupts driven by scheduled events.
 - **UART Peripheral (`efs::drivers::uart::UART`)**: Serial communication peripheral modeling DATA, STATUS, CONTROL, and BAUD registers with internal TX and RX FIFOs.
 - **Interrupt Controller (`efs::kernel::InterruptController`)**: Priority interrupt manager supporting 32 IRQ sources, enabling/disabling, priority dispatching, and ISR registration.
-- **CPU Execution Engine (`efs::cpu::CPU`)**: Cycle-based execution loop connected directly to the System Bus, driving the Simulation Clock, executing ready scheduled events, dispatching pending interrupts, and running loaded firmware.
-- **Firmware Abstraction Layer (`efs::firmware::Firmware`, `efs::firmware::BasicFirmware`)**: Standardized lifecycle interface (`initialize`, `execute`, `shutdown`) and concrete sample firmware implementations.
+- **CPU Execution Engine (`efs::cpu::CPU`)**: Cycle-based execution loop connected directly to the System Bus, driving the Simulation Clock, executing ready scheduled events, dispatching pending interrupts, and running loaded firmware via FirmwareManager.
 - **CPU Register File (`efs::cpu::registers::RegisterFile`)**: Encapsulates processor state including 16 General Purpose Registers (R0–R15), Program Counter (PC), Stack Pointer (SP), and Status Register (SR).
 - **Interactive Monitor CLI (`efs::monitor::Monitor`)**: Non-destructive command-line debugger allowing real-time step execution, memory dumps, register inspection, peripheral querying, clock timing observation, and pending event inspection.
 
@@ -87,9 +53,14 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
                                     │
                                     ▼
                        ┌─────────────────────────┐
-                       │        Firmware         │
+                       │    Firmware Manager     │
                        └────────────┬────────────┘
                                     │
+           ┌────────────────────────┼────────────────────────┐
+           ▼                        ▼                        ▼
+     BasicFirmware         TimerBlinkFirmware        UARTEchoFirmware
+           │                        │                        │
+           └────────────────────────┼────────────────────────┘
                                     ▼
                        ┌─────────────────────────┐
                        │Hardware Abstraction Layer│ (GPIOHAL, TimerHAL, UARTHAL)
@@ -115,32 +86,90 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 
 ---
 
+## Firmware Application Framework
+
+The Firmware Application Framework (`efs::firmware`) allows multiple firmware applications to coexist while remaining completely decoupled from the simulator implementation.
+
+### Firmware Lifecycle
+
+Every firmware application implements the standardized `efs::firmware::Firmware` interface:
+
+1. `initialize()`: Invoked once when the application starts execution. Configures HAL peripherals (GPIO pin directions, timer compare values, UART baud rates).
+2. `update()`: Invoked on every CPU simulation step to process input state, execute state machines, and update outputs via HAL.
+3. `shutdown()`: Invoked when active firmware is halted. Safely disables hardware timers, outputs, and communication channels.
+4. `reset()`: Resets internal state to initial pre-execution defaults.
+
+### FirmwareManager
+
+`efs::firmware::FirmwareManager` acts as the central registry and controller:
+
+```cpp
+// 1. Instantiate FirmwareManager
+efs::firmware::FirmwareManager manager;
+
+// 2. Register firmware applications
+manager.registerFirmware("BasicToggle", basicFirmware);
+manager.registerFirmware("TimerBlink", timerBlinkFirmware);
+manager.registerFirmware("UARTEcho", uartEchoFirmware);
+
+// 3. Select active firmware and run lifecycle
+manager.setActiveFirmware("TimerBlink");
+manager.initialize();
+manager.update();
+manager.shutdown();
+```
+
+### Creating Custom Firmware
+
+Custom firmware applications communicate **exclusively** through HAL interfaces (`GPIOHAL`, `TimerHAL`, `UARTHAL`):
+
+```cpp
+#include "firmware/firmware.hpp"
+#include "hal/gpio_hal.hpp"
+#include "hal/timer_hal.hpp"
+
+class CustomBlinkFirmware : public efs::firmware::Firmware {
+public:
+    CustomBlinkFirmware(efs::hal::GPIOHAL& gpio, efs::hal::TimerHAL& timer, std::uint8_t pin)
+        : m_gpio(gpio), m_timer(timer), m_pin(pin) {}
+
+    void initialize() override {
+        m_gpio.configureOutput(m_pin);
+        m_timer.setCompare(10);
+        m_timer.start();
+    }
+
+    void update() override {
+        if (m_timer.hasMatch()) {
+            m_gpio.toggle(m_pin);
+            m_timer.clearMatch();
+            m_timer.reset();
+            m_timer.start();
+        }
+    }
+
+    void shutdown() override {
+        m_timer.stop();
+        m_gpio.write(m_pin, false);
+    }
+
+    void reset() override {
+        m_timer.stop();
+        m_gpio.write(m_pin, false);
+    }
+
+private:
+    efs::hal::GPIOHAL& m_gpio;
+    efs::hal::TimerHAL& m_timer;
+    std::uint8_t m_pin;
+};
+```
+
+---
+
 ## Continuous Integration & Quality Gates
 
 The project maintains a production-grade GitHub Actions CI pipeline (`.github/workflows/ci.yml`):
-
-```text
-               GitHub Push / Pull Request
-                           │
-                           ▼
-          ┌────────────────────────────────┐
-          │  Multi-Platform CI Matrix Loop │
-          ├────────────────────────────────┤
-          │ - Ubuntu Latest (GCC/Clang)    │
-          │ - macOS Latest (Apple Clang)   │
-          │ - Windows Latest (MSVC)        │
-          └────────────────┬───────────────┘
-                           │
-                           ▼
-          ┌────────────────────────────────┐
-          │   Quality Gate Checks (-Werror)│
-          ├────────────────────────────────┤
-          │ 1. CMake Configuration         │
-          │ 2. Parallel Multi-Target Build │
-          │ 3. All Demo Executables Built  │
-          │ 4. CTest Suite (14 Test Suites)│
-          └────────────────────────────────┘
-```
 
 - **Cross-Platform Matrix**: Automated builds on Linux, macOS, and Windows.
 - **Strict Warning Management**: Compiles with `-Wall -Wextra -Wpedantic` (GCC/Clang) or `/W4` (MSVC). Passing `-DEFS_ENABLE_WERROR=ON` in CI treats warnings as errors without breaking local developer flexibility.
@@ -173,8 +202,8 @@ Embedded-Firmware-Simulator/
 │       └── ci.yml            # CI build & test pipeline matrix
 ├── include/                  # Public C++ header interfaces
 ├── src/                      # Implementation files matching include/ structure
-├── examples/                 # Sample applications (firmware_demo, uart_demo, event_scheduler_demo, hal_demo)
-├── tests/                    # CTest unit test suite (14 test suites)
+├── examples/                 # Sample applications (firmware_demo, uart_demo, event_scheduler_demo, hal_demo, firmware_manager_demo)
+├── tests/                    # CTest unit test suite (15 test suites)
 ├── CMakeLists.txt            # CMake build system configuration
 └── README.md                 # Project documentation
 ```
@@ -226,13 +255,14 @@ cmake --build build
 ./uart_demo
 ./event_scheduler_demo
 ./hal_demo
+./firmware_manager_demo
 ```
 
 ---
 
 ## Running Tests
 
-Execute the full CTest unit test suite covering all 14 project test modules:
+Execute the full CTest unit test suite covering all 15 project test modules:
 
 ```bash
 # Navigate to build directory and run tests
@@ -250,9 +280,9 @@ ctest --test-dir build --output-on-failure
 
 ## Project Statistics
 
-- **Core Subsystems**: HAL (`GPIOHAL`, `TimerHAL`, `UARTHAL`), Event Scheduler, Simulation Clock, System Bus, Memory, MMIO, GPIO, Timer, UART, Interrupt Controller, CPU, Register File, Firmware, Interactive Monitor
+- **Core Subsystems**: Firmware Manager, HAL (`GPIOHAL`, `TimerHAL`, `UARTHAL`), Event Scheduler, Simulation Clock, System Bus, Memory, MMIO, GPIO, Timer, UART, Interrupt Controller, CPU, Register File, Firmware Framework, Interactive Monitor
 - **Peripherals Modeled**: 3 (`GPIO`, `Hardware Timer`, `UART Serial Interface`)
-- **Unit Test Suites**: 14 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `RegisterTests`, `MonitorTests`, `UARTTests`, `SystemTests`, `ClockTests`, `SchedulerTests`, `HALTests`)
+- **Unit Test Suites**: 15 (`MemoryTests`, `MMIOTests`, `GPIOTests`, `TimerTests`, `InterruptTests`, `CPUTests`, `FirmwareTests`, `FirmwareManagerTests`, `RegisterTests`, `MonitorTests`, `UARTTests`, `SystemTests`, `ClockTests`, `SchedulerTests`, `HALTests`)
 - **CI Test Platforms**: Ubuntu, macOS, Windows
 - **Language Standard**: Modern C++20
 
@@ -276,16 +306,17 @@ ctest --test-dir build --output-on-failure
 - [x] **v1.4 – Event Scheduler**: Deterministic cycle-driven event scheduler for callback execution and peripheral timing.
 - [x] **v1.5 – Hardware Abstraction Layer**: Clean, stable `GPIOHAL`, `TimerHAL`, and `UARTHAL` abstractions for firmware peripheral control.
 - [x] **v1.5.1 – Continuous Integration & Quality Gates**: Cross-platform GitHub Actions CI matrix pipeline, `-Werror` quality gates, and build status reporting.
+- [x] **v1.6 – Firmware Application Framework**: `FirmwareManager`, lifecycle interface (`initialize`, `update`, `shutdown`, `reset`), `TimerBlinkFirmware`, and `UARTEchoFirmware`.
 
 ---
 
 ## Future Work
 
-- **v1.6 – Firmware Binary Loader**: ELF and Intel HEX firmware binary image loader.
-- **v1.7 – Advanced Monitor Debugging**: Breakpoints, watchpoints, and symbol table resolution.
+- [ ] **v1.7 – Firmware Binary Loader**: ELF and Intel HEX firmware binary image loader.
+- [ ] **v1.8 – Advanced Monitor Debugging**: Breakpoints, watchpoints, and symbol table resolution.
 
 ---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+MIT License. See `LICENSE` for details.

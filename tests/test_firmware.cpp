@@ -4,6 +4,7 @@
 #include "firmware/firmware.hpp"
 #include "mmio/mmio_bus.hpp"
 #include <cassert>
+#include <cstdint>
 #include <iostream>
 #include <memory>
 
@@ -13,16 +14,23 @@ public:
     void initialize() override {
         init_count++;
     }
-    void execute() override {
+    void update() override {
         exec_count++;
+    }
+    void execute() override {
+        update();
     }
     void shutdown() override {
         shutdown_count++;
+    }
+    void reset() override {
+        reset_count++;
     }
 
     int init_count{0};
     int exec_count{0};
     int shutdown_count{0};
+    int reset_count{0};
 };
 
 void test_firmware_loading() {

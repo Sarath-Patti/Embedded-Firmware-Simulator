@@ -22,7 +22,7 @@ void BasicFirmware::initialize() {
     m_gpioHAL.write(m_pin, false);
 }
 
-void BasicFirmware::execute() {
+void BasicFirmware::update() {
     if (!m_initialized || m_shutdown) {
         return;
     }
@@ -35,11 +35,25 @@ void BasicFirmware::execute() {
     }
 }
 
+void BasicFirmware::execute() {
+    update();
+}
+
 void BasicFirmware::shutdown() {
     if (m_initialized && !m_shutdown) {
         m_gpioHAL.write(m_pin, false);
         m_shutdown = true;
     }
+}
+
+void BasicFirmware::reset() {
+    if (m_initialized && !m_shutdown) {
+        m_gpioHAL.write(m_pin, false);
+    }
+    m_initialized = false;
+    m_shutdown = false;
+    m_cycleCounter = 0;
+    m_executionCount = 0;
 }
 
 common::Size BasicFirmware::executionCount() const noexcept {

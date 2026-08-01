@@ -5,14 +5,16 @@
 #include "drivers/timer/timer.hpp"
 #include "kernel/interrupt_controller.hpp"
 #include "firmware/firmware.hpp"
+#include "firmware/firmware_manager.hpp"
 #include "cpu/registers/register_file.hpp"
 #include "system/system_bus.hpp"
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace efs::cpu {
 
-/// Central CPU execution engine coordinating cycle simulation steps, SystemBus, and firmware.
+/// Central CPU execution engine coordinating cycle simulation steps, SystemBus, and FirmwareManager.
 class CPU {
 public:
     explicit CPU(system::SystemBus* systemBus = nullptr);
@@ -24,37 +26,43 @@ public:
     CPU(CPU&&) = delete;
     CPU& operator=(CPU&&) = delete;
 
+    /// Accesses the central FirmwareManager component (mutable).
+    [[nodiscard]] firmware::FirmwareManager& firmwareManager() noexcept;
+
+    /// Accesses the central FirmwareManager component (read-only).
+    [[nodiscard]] const firmware::FirmwareManager& firmwareManager() const noexcept;
+
     /// Sets or attaches the SystemBus reference.
     void setSystemBus(system::SystemBus* systemBus) noexcept;
 
     /// Returns pointer to attached SystemBus.
     [[nodiscard]] system::SystemBus* systemBus() const noexcept;
 
-    /// Starts CPU execution and initializes loaded firmware if present.
+    /// Starts CPU execution and initializes active firmware via FirmwareManager.
     void start();
 
-    /// Halts CPU execution and shuts down loaded firmware if present.
+    /// Halts CPU execution and shuts down active firmware via FirmwareManager.
     void stop();
 
-    /// Resets the CPU cycle counter and register file state.
+    /// Resets the CPU cycle counter, register file, and FirmwareManager state.
     void reset();
 
-    /// Executes exactly one simulation step (firmware tick, SystemBus timer update, SystemBus interrupt dispatch).
+    /// Executes exactly one simulation step (FirmwareManager update, SystemBus timer update, SystemBus interrupt dispatch).
     void step();
 
     /// Executes N simulation cycles while CPU remains in running state.
     void run(common::QWord cycles);
 
-    /// Loads firmware into the CPU. Automatically halts active execution first.
-    bool loadFirmware(std::shared_ptr<firmware::Firmware> firmware);
+    /// Helper loading firmware into FirmwareManager under a given name (defaults to "default").
+    bool loadFirmware(std::shared_ptr<firmware::Firmware> firmware, const std::string& name = "default");
 
-    /// Unloads current firmware from the CPU.
+    /// Helper unloading/shutting down current active firmware.
     void unloadFirmware();
 
-    /// Returns true if a valid firmware instance is loaded.
+    /// Returns true if an active firmware instance is loaded in FirmwareManager.
     [[nodiscard]] bool firmwareLoaded() const noexcept;
 
-    /// Returns pointer to current firmware instance or nullptr.
+    /// Returns pointer to current active firmware instance or nullptr.
     [[nodiscard]] std::shared_ptr<firmware::Firmware> firmware() const noexcept;
 
     /// Attaches a hardware timer to receive CPU tick notifications via SystemBus.
@@ -85,7 +93,7 @@ private:
     common::QWord m_cycleCount{0};
     bool m_running{false};
     registers::RegisterFile m_registerFile;
-    std::shared_ptr<firmware::Firmware> m_firmware{nullptr};
+    firmware::FirmwareManager m_firmwareManager;
     system::SystemBus* m_systemBus{nullptr};
     std::unique_ptr<system::SystemBus> m_ownedSystemBus{nullptr};
 };

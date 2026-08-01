@@ -21,6 +21,14 @@ CPU::~CPU() {
     stop();
 }
 
+firmware::FirmwareManager& CPU::firmwareManager() noexcept {
+    return m_firmwareManager;
+}
+
+const firmware::FirmwareManager& CPU::firmwareManager() const noexcept {
+    return m_firmwareManager;
+}
+
 void CPU::setSystemBus(system::SystemBus* systemBus) noexcept {
     m_systemBus = systemBus;
     m_ownedSystemBus.reset();
@@ -33,24 +41,21 @@ system::SystemBus* CPU::systemBus() const noexcept {
 void CPU::start() {
     if (!m_running) {
         m_running = true;
-        if (m_firmware != nullptr) {
-            m_firmware->initialize();
-        }
+        m_firmwareManager.initialize();
     }
 }
 
 void CPU::stop() {
     if (m_running) {
         m_running = false;
-        if (m_firmware != nullptr) {
-            m_firmware->shutdown();
-        }
+        m_firmwareManager.shutdown();
     }
 }
 
 void CPU::reset() {
     m_cycleCount = 0;
     m_registerFile.reset();
+    m_firmwareManager.reset();
 }
 
 const registers::RegisterFile& CPU::registerFile() const noexcept {
@@ -72,8 +77,8 @@ void CPU::step() {
         }
     }
 
-    if (m_firmware != nullptr && m_running) {
-        m_firmware->execute();
+    if (m_running) {
+        m_firmwareManager.update();
     }
 }
 
@@ -84,7 +89,7 @@ void CPU::run(common::QWord cycles) {
     }
 }
 
-bool CPU::loadFirmware(std::shared_ptr<firmware::Firmware> firmware) {
+bool CPU::loadFirmware(std::shared_ptr<firmware::Firmware> firmware, const std::string& name) {
     if (!firmware) {
         common::Logger::warning("Attempted to load null firmware into CPU");
         return false;
@@ -92,7 +97,12 @@ bool CPU::loadFirmware(std::shared_ptr<firmware::Firmware> firmware) {
     if (m_running) {
         stop();
     }
-    m_firmware = std::move(firmware);
+    if (!m_firmwareManager.registerFirmware(name, firmware)) {
+        // If registration failed because name exists, update reference
+        m_firmwareManager.setActiveFirmware(name);
+    } else {
+        m_firmwareManager.setActiveFirmware(name);
+    }
     return true;
 }
 
@@ -100,15 +110,18 @@ void CPU::unloadFirmware() {
     if (m_running) {
         stop();
     }
-    m_firmware = nullptr;
+    std::string activeName = m_firmwareManager.activeFirmwareName();
+    if (!activeName.empty()) {
+        m_firmwareManager.unregisterFirmware(activeName);
+    }
 }
 
 bool CPU::firmwareLoaded() const noexcept {
-    return m_firmware != nullptr;
+    return m_firmwareManager.activeFirmware() != nullptr;
 }
 
 std::shared_ptr<firmware::Firmware> CPU::firmware() const noexcept {
-    return m_firmware;
+    return m_firmwareManager.activeFirmware();
 }
 
 bool CPU::attachTimer(drivers::timer::Timer* timer) {
