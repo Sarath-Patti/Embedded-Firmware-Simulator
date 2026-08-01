@@ -205,6 +205,14 @@ drivers::spi::SPIController* SystemBus::spi() const noexcept {
     return m_spi;
 }
 
+void SystemBus::attachI2C(drivers::i2c::I2CController* i2c) noexcept {
+    m_i2c = i2c;
+}
+
+drivers::i2c::I2CController* SystemBus::i2c() const noexcept {
+    return m_i2c;
+}
+
 void SystemBus::reset() {
     for (auto* dma : m_dmas) {
         if (dma != nullptr) {
@@ -224,6 +232,9 @@ void SystemBus::reset() {
     }
     if (m_spi != nullptr) {
         m_spi->reset();
+    }
+    if (m_i2c != nullptr) {
+        m_i2c->reset();
     }
     if (m_interruptController != nullptr) {
         m_interruptController->reset();

@@ -2,7 +2,7 @@
 
 [![CI Status](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml)
 
-A high-performance, modular **C++20 Embedded Firmware Simulator** designed for bare-metal firmware development, hardware abstraction layer (HAL) validation, hardware peripheral simulation, deterministic timing analysis, low-power state management, Direct Memory Access (DMA) transfers, Serial Peripheral Interface (SPI) communication, and real-time interactive debugging without physical hardware.
+A high-performance, modular **C++20 Embedded Firmware Simulator** designed for bare-metal firmware development, hardware abstraction layer (HAL) validation, hardware peripheral simulation, deterministic timing analysis, low-power state management, Direct Memory Access (DMA) transfers, Serial Peripheral Interface (SPI) communication, Inter-Integrated Circuit (I²C) master communication, and real-time interactive debugging without physical hardware.
 
 ---
 
@@ -10,12 +10,14 @@ A high-performance, modular **C++20 Embedded Firmware Simulator** designed for b
 
 Developing and testing embedded firmware on physical hardware is often constrained by limited debugging visibility, slow flashing cycles, complex hardware availability, and non-deterministic timing environments.
 
-The **Embedded Firmware Simulator** solves these challenges by providing a modular, C++20 simulated system architecture. Hardware peripherals expose standardized MMIO registers, the kernel dispatches priority interrupts, a Direct Memory Access (DMA) controller streams data between memory and peripherals, a Serial Peripheral Interface (SPI) master controller coordinates full-duplex communication with simulated SPI slave devices, the CPU coordinates cycle simulation steps, a cycle-driven Event Scheduler handles asynchronous peripheral events, a Hardware Abstraction Layer (HAL) isolates firmware from hardware details, a central FirmwareManager manages firmware application lifecycles, a Power Management & Reset Controller subsystem models system power states and reset behaviors, and an interactive monitor CLI gives developers complete visibility into system state in real time.
+The **Embedded Firmware Simulator** solves these challenges by providing a modular, C++20 simulated system architecture. Hardware peripherals expose standardized MMIO registers, the kernel dispatches priority interrupts, a Direct Memory Access (DMA) controller streams data between memory and peripherals, SPI and I²C master controllers coordinate synchronous communication with simulated slave devices, the CPU coordinates cycle simulation steps, a cycle-driven Event Scheduler handles asynchronous peripheral events, a Hardware Abstraction Layer (HAL) isolates firmware from hardware details, a central FirmwareManager manages firmware application lifecycles, a Power Management & Reset Controller subsystem models system power states and reset behaviors, and an interactive monitor CLI gives developers complete visibility into system state in real time.
 
 ---
 
-## Key Features (v1.9.0)
+## Key Features (v2.0.0)
 
+- **Inter-Integrated Circuit (I²C) Controller (`efs::drivers::i2c::I2CController`)**: Master-driven I²C bus controller supporting 7-bit slave addressing, START/STOP condition generation, ACK/NACK verification, multi-device attachment, and MMIO register integration.
+- **I²C Hardware Abstraction Layer (`efs::hal::I2CHAL`)**: Firmware abstraction supporting Arduino/Wire-style transactions (`beginTransmission()`, `endTransmission()`, `writeByte()`, `readByte()`, `requestFrom()`, `available()`).
 - **Serial Peripheral Interface (SPI) Controller (`efs::drivers::spi::SPIController`)**: Synchronous full-duplex SPI master controller supporting configurable clock dividers, SPI modes (Mode 0, 1, 2, 3), and integration with simulated SPI slave devices (`efs::drivers::spi::SPIDevice`).
 - **SPI Hardware Abstraction Layer (`efs::hal::SPIHAL`)**: Clean firmware HAL abstraction isolating firmware applications from underlying raw SPI peripheral MMIO registers via `writeByte()`, `readByte()`, `transfer()`, and `configure()`.
 - **Direct Memory Access (DMA) Controller (`efs::drivers::dma::DMAController`)**: Cycle-accurate background data transfer between Memory and MMIO peripherals without CPU intervention. Supports Memory-to-Memory, Memory-to-MMIO, and MMIO-to-Memory transfers at 1 byte per simulation cycle, with completion interrupt generation.
@@ -28,7 +30,7 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
   - `TimerBlinkFirmware`: Hardware timer-driven LED blinking firmware operating via `GPIOHAL` and `TimerHAL`.
   - `UARTEchoFirmware`: Automatic serial communication echo firmware operating via `UARTHAL`.
 - **Continuous Integration Pipeline**: Automated multi-platform GitHub Actions CI matrix testing across Ubuntu, macOS, and Windows with strict compiler warning enforcement (`-Werror` / `/WX`).
-- **Hardware Abstraction Layer (`efs::hal`)**: Provides clean, stable `GPIOHAL`, `TimerHAL`, `UARTHAL`, and `SPIHAL` abstractions hiding raw peripheral implementation details from firmware.
+- **Hardware Abstraction Layer (`efs::hal`)**: Provides clean, stable `GPIOHAL`, `TimerHAL`, `UARTHAL`, `SPIHAL`, and `I2CHAL` abstractions hiding raw peripheral implementation details from firmware.
 - **Event Scheduler (`efs::system::scheduler::EventScheduler`)**: Deterministic cycle-driven event scheduler for executing callbacks at specific simulation times with strict FIFO ordering for simultaneous events.
 - **Simulation Clock (`efs::system::clock::SimulationClock`)**: Centralized deterministic timing source maintaining simulated cycle counts and calculating elapsed nanoseconds, microseconds, and milliseconds.
 - **System Bus Architecture (`efs::system::SystemBus`)**: Centralized communication layer interconnecting CPU, Memory, MMIO Bus, Interrupt Controller, Simulation Clock, Event Scheduler, Power Subsystem, DMA Controller, and Hardware Peripherals.
@@ -79,29 +81,30 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 │   Memory Subsystem  │ │   DMA   │ │  MMIO   │ │Interrupt Controller │
 └─────────────────────┘ └─────────┘ └────┬────┘ └─────────────────────┘
                                          │
-                    ┌────────────────────┼────────────────────┐
-                    ▼                    ▼                    ▼
-           ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-           │ GPIO Peripheral │  │ TimerPeripheral │  │ UART Peripheral │
-           └─────────────────┘  └─────────────────┘  └────────┬────────┘
-                                                              │
-                                                              ▼
-                                                     ┌─────────────────┐
-                                                     │ SPI Controller  │
-                                                     └────────┬────────┘
-                                                              │
-                                                              ▼
-                                                     ┌─────────────────┐
-                                                     │ Simulated SPI   │
-                                                     │ Slave Device    │
-                                                     └─────────────────┘
+       ┌────────────────────┬────────────┴───────────┬────────────────────┐
+       ▼                    ▼                        ▼                    ▼
+┌──────────────┐   ┌─────────────────┐      ┌─────────────────┐  ┌─────────────────┐
+│ GPIO Periph  │   │ TimerPeripheral │      │ UART Peripheral │  │ SPI Controller  │
+└──────────────┘   └─────────────────┘      └─────────────────┘  └────────┬────────┘
+                                                                          │
+                                                     ┌────────────────────┼────────────────────┐
+                                                     ▼                                         ▼
+                                            ┌─────────────────┐                       ┌─────────────────┐
+                                            │ Simulated SPI   │                       │ I2C Controller  │
+                                            │ Slave Device    │                       └────────┬────────┘
+                                            └─────────────────┘                                │
+                                                                                               ▼
+                                                                                      ┌─────────────────┐
+                                                                                      │ Simulated I2C   │
+                                                                                      │ Slave Device    │
+                                                                                      └─────────────────┘
 ```
 
 ---
 
-## SPI Architecture & Transfer Flow
+## I²C Architecture & Transaction Flow
 
-The Serial Peripheral Interface (`efs::drivers::spi::SPIController`) manages full-duplex synchronous byte transfers between master controller and attached simulated SPI slave devices (`efs::drivers::spi::SPIDevice`). Firmware interacts with SPI via `efs::hal::SPIHAL`.
+The Inter-Integrated Circuit (`efs::drivers::i2c::I2CController`) peripheral enables master-driven transactions with multi-device 7-bit slave addressing. Firmware interacts with I²C via `efs::hal::I2CHAL`.
 
 ### Architecture
 
@@ -109,37 +112,37 @@ The Serial Peripheral Interface (`efs::drivers::spi::SPIController`) manages ful
                  Firmware Application
                           │
                           ▼
-                       SPI HAL
+                       I2C HAL
                           │
                           ▼
-                    SPI Controller (MMIO 0x40004000)
+                    I2C Controller (MMIO 0x40005000)
                           │
                      System Bus
                           │
                      MMIO Bus
                           │
-                 Simulated SPI Device
+                 Simulated I2C Slave
 ```
 
 ### Register Layout
 
 | Offset | Register Name | Description |
 |---|---|---|
-| `0x00` | DATA | Transmit/Receive data register (8-bit / 32-bit) |
-| `0x04` | STATUS | Status bits: Enable (bit 0), Busy (bit 1), RX Available (bit 2) |
-| `0x08` | CONTROL | Control bits: Enable (bit 0), Mode 0..3 (bits 1..2) |
-| `0x0C` | CLOCK_DIV | Prescaler clock divider (default: 2) |
+| `0x00` | DATA | Data transmit/receive register |
+| `0x04` | STATUS | Status bits: Enable (bit 0), Busy (bit 1), RX Available (bit 2), NACK Error (bit 3) |
+| `0x08` | CONTROL | Control bits: Enable (bit 0), START (bit 1), STOP (bit 2) |
+| `0x0C` | ADDR | 7-bit target slave address (bits 0-6) |
 
-### Transfer Flow
+### Transaction Flow
 
 ```text
-1. spiHAL.configure(mode, div) ──► 2. spiHAL.enable() ──► 3. spiHAL.transfer(txByte) ──► 4. rxByte returned
+1. beginTransmission(0x50) ──► 2. writeByte(0x10) ──► 3. endTransmission() ──► 4. requestFrom(0x50, 2)
 ```
 
-1. **Configuration**: `configure(mode, clockDivider)` sets SPI mode (0..3) and clock prescaler divider.
-2. **Enable**: `enable()` sets `CTRL_ENABLE_BIT` in the control register.
-3. **Full-Duplex Transfer**: `transfer(txByte)` sends `txByte` to the attached SPI slave device, receives the slave's response byte, updates the DATA register, and stores the response in the RX buffer.
-4. **Firmware Retrieval**: `readByte()` returns enqueued received bytes from the RX buffer.
+1. **Address & START**: `beginTransmission(addr)` sets target slave address and issues START condition. Returns true if slave acknowledges address (ACK).
+2. **Data Write**: `writeByte(data)` writes byte to active slave device. Returns ACK status.
+3. **STOP**: `endTransmission()` issues STOP condition, releasing the bus.
+4. **Data Read**: `requestFrom(addr, quantity)` issues START in read mode, retrieves `quantity` bytes into HAL RX queue, and issues STOP condition.
 
 ### Example Usage
 
@@ -147,23 +150,31 @@ The Serial Peripheral Interface (`efs::drivers::spi::SPIController`) manages ful
 efs::mmio::MMIOBus mmioBus;
 efs::system::SystemBus systemBus(nullptr, &mmioBus, nullptr);
 
-// Instantiate SPI controller at MMIO base 0x40004000
-efs::drivers::spi::SPIController spi(mmioBus, 0x40004000);
-systemBus.attachSPI(&spi);
+// Instantiate I2C controller at MMIO base 0x40005000
+efs::drivers::i2c::I2CController i2c(mmioBus, 0x40005000);
+systemBus.attachI2C(&i2c);
 
-// Attach simulated SPI slave device
-efs::drivers::spi::SimulatedSPIDevice slave(0x55 /* default response */);
-spi.attachSlave(&slave);
+// Attach simulated I2C slave device (e.g. EEPROM at address 0x50)
+efs::drivers::i2c::SimulatedI2CDevice eeprom(0x50);
+i2c.attachDevice(&eeprom);
 
-// Use SPI HAL in firmware
-efs::hal::SPIHAL spiHAL(&spi);
-spiHAL.enable();
-spiHAL.configure(0 /* Mode 0 */, 4 /* Divider 4 */);
+// Use I2C HAL in firmware
+efs::hal::I2CHAL i2cHAL(&i2c);
+i2cHAL.enable();
 
-// Perform full-duplex transfer
-std::uint8_t rx = spiHAL.transfer(0xA5);
-assert(rx == 0x55);
-assert(slave.lastReceivedByte() == 0xA5);
+// Master Write Transaction
+bool ack = i2cHAL.beginTransmission(0x50);
+assert(ack);
+i2cHAL.writeByte(0x00); // Memory address
+i2cHAL.writeByte(0xFF); // Data payload
+i2cHAL.endTransmission();
+
+// Master Read Transaction
+eeprom.queueResponseByte(0x42);
+std::size_t readCount = i2cHAL.requestFrom(0x50, 1);
+assert(readCount == 1);
+std::uint8_t val = i2cHAL.readByte();
+assert(val == 0x42);
 ```
 
 ---

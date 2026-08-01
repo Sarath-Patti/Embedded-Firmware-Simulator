@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 1.9.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 2.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,10 +32,12 @@ add_library(embedded_firmware_simulator STATIC
     src/drivers/uart/uart.cpp
     src/drivers/dma/dma_controller.cpp
     src/drivers/spi/spi_controller.cpp
+    src/drivers/i2c/i2c_controller.cpp
     src/hal/gpio_hal.cpp
     src/hal/timer_hal.cpp
     src/hal/uart_hal.cpp
     src/hal/spi_hal.cpp
+    src/hal/i2c_hal.cpp
     src/kernel/interrupt_controller.cpp
     src/system/system_bus.cpp
     src/system/clock/simulation_clock.cpp
@@ -96,6 +98,10 @@ add_executable(spi_demo examples/spi_demo.cpp)
 target_link_libraries(spi_demo PRIVATE embedded_firmware_simulator)
 target_compile_options(spi_demo PRIVATE ${EFS_WARNING_FLAGS})
 
+add_executable(i2c_demo examples/i2c_demo.cpp)
+target_link_libraries(i2c_demo PRIVATE embedded_firmware_simulator)
+target_compile_options(i2c_demo PRIVATE ${EFS_WARNING_FLAGS})
+
 # Testing Configuration
 enable_testing()
 
@@ -124,3 +130,4 @@ efs_add_test(scheduler_tests tests/test_scheduler.cpp SchedulerTests)
 efs_add_test(hal_tests tests/test_hal.cpp HALTests)
 efs_add_test(dma_tests tests/test_dma.cpp DMATests)
 efs_add_test(spi_tests tests/test_spi.cpp SPITests)
+efs_add_test(i2c_tests tests/test_i2c.cpp I2CTests)

@@ -3,6 +3,7 @@
 
 #include "drivers/dma/dma_controller.hpp"
 #include "drivers/gpio/gpio.hpp"
+#include "drivers/i2c/i2c_controller.hpp"
 #include "drivers/spi/spi_controller.hpp"
 #include "drivers/timer/timer.hpp"
 #include "drivers/uart/uart.hpp"
@@ -100,7 +101,13 @@ public:
     /// Returns attached SPI peripheral pointer.
     [[nodiscard]] drivers::spi::SPIController* spi() const noexcept;
 
-    /// Resets all attached peripherals (DMA, GPIO, Timers, UART, SPI, Interrupt Controller, Memory, Clock).
+    /// Attaches I2C peripheral.
+    void attachI2C(drivers::i2c::I2CController* i2c) noexcept;
+
+    /// Returns attached I2C peripheral pointer.
+    [[nodiscard]] drivers::i2c::I2CController* i2c() const noexcept;
+
+    /// Resets all attached peripherals (DMA, GPIO, Timers, UART, SPI, I2C, Interrupt Controller, Memory, Clock).
     void reset();
 
 private:
@@ -114,6 +121,7 @@ private:
     drivers::gpio::GPIO* m_gpio{nullptr};
     drivers::uart::UART* m_uart{nullptr};
     drivers::spi::SPIController* m_spi{nullptr};
+    drivers::i2c::I2CController* m_i2c{nullptr};
 };
 
 } // namespace efs::system
