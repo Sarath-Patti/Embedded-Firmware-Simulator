@@ -2,7 +2,7 @@
 
 namespace efs::firmware {
 
-TimerBlinkFirmware::TimerBlinkFirmware(hal::GPIOHAL& gpioHAL, hal::TimerHAL& timerHAL, std::uint8_t pin, common::Size compareValue)
+TimerBlinkFirmware::TimerBlinkFirmware(hal::GPIOHAL& gpioHAL, hal::TimerHAL& timerHAL, std::uint8_t pin, common::DWord compareValue)
     : m_gpioHAL(gpioHAL), m_timerHAL(timerHAL), m_pin(pin), m_compareValue(compareValue == 0 ? 1 : compareValue) {
 }
 

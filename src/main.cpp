@@ -44,7 +44,7 @@ int main() {
     ic.enable(TIMER_INT_ID);
     timer.attachInterruptController(&ic, TIMER_INT_ID);
     
-    constexpr efs::common::Size TIMER_COMPARE = 10;
+    constexpr efs::common::DWord TIMER_COMPARE = 10;
     timer.setCompare(TIMER_COMPARE);
     timer.start();
 

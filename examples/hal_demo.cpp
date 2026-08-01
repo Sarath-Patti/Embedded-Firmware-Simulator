@@ -39,7 +39,7 @@ int main() {
 
     // 4. Demonstrate Timer HAL Operations
     std::cout << "\n--- Timer HAL Demonstration ---\n";
-    constexpr efs::common::Size TIMER_COMPARE = 100;
+    constexpr efs::common::DWord TIMER_COMPARE = 100;
     timerHAL.setCompare(TIMER_COMPARE);
     timerHAL.start();
     std::cout << "Timer HAL started. Current counter: " << timerHAL.counter() << "\n";

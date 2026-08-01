@@ -185,7 +185,7 @@ void test_concrete_firmware_timer_blink() {
     TimerHAL timerHAL(timer);
 
     constexpr std::uint8_t LED_PIN = 3;
-    constexpr efs::common::Size COMPARE_VAL = 2;
+    constexpr efs::common::DWord COMPARE_VAL = 2;
     auto blinkFw = std::make_shared<TimerBlinkFirmware>(gpioHAL, timerHAL, LED_PIN, COMPARE_VAL);
 
     FirmwareManager mgr;

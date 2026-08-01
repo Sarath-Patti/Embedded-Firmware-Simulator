@@ -37,7 +37,7 @@ int main() {
     constexpr std::uint8_t BASIC_PIN = 1;
     constexpr std::uint8_t BLINK_PIN = 2;
     constexpr efs::common::Size TOGGLE_INTERVAL = 2;
-    constexpr efs::common::Size TIMER_COMPARE = 3;
+    constexpr efs::common::DWord TIMER_COMPARE = 3;
     constexpr std::uint32_t BAUD_RATE = 115200U;
 
     auto basicFw = std::make_shared<efs::firmware::BasicFirmware>(gpioHAL, BASIC_PIN, TOGGLE_INTERVAL);

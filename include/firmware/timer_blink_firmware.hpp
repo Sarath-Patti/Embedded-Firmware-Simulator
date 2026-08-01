@@ -11,7 +11,7 @@ namespace efs::firmware {
 /// Sample firmware toggling a GPIO pin based on hardware TimerHAL compare matches.
 class TimerBlinkFirmware : public Firmware {
 public:
-    TimerBlinkFirmware(hal::GPIOHAL& gpioHAL, hal::TimerHAL& timerHAL, std::uint8_t pin, common::Size compareValue = 5);
+    TimerBlinkFirmware(hal::GPIOHAL& gpioHAL, hal::TimerHAL& timerHAL, std::uint8_t pin, common::DWord compareValue = 5);
     ~TimerBlinkFirmware() override;
 
     void initialize() override;
@@ -28,7 +28,7 @@ private:
     hal::GPIOHAL& m_gpioHAL;
     hal::TimerHAL& m_timerHAL;
     std::uint8_t m_pin;
-    common::Size m_compareValue;
+    common::DWord m_compareValue;
     common::Size m_toggleCount{0};
     bool m_initialized{false};
     bool m_shutdown{false};
