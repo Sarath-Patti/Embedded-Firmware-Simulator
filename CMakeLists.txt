@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EmbeddedFirmwareSimulator VERSION 2.1.0 LANGUAGES CXX)
+project(EmbeddedFirmwareSimulator VERSION 2.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,12 +34,14 @@ add_library(embedded_firmware_simulator STATIC
     src/drivers/spi/spi_controller.cpp
     src/drivers/i2c/i2c_controller.cpp
     src/drivers/pwm/pwm_controller.cpp
+    src/drivers/adc/adc_controller.cpp
     src/hal/gpio_hal.cpp
     src/hal/timer_hal.cpp
     src/hal/uart_hal.cpp
     src/hal/spi_hal.cpp
     src/hal/i2c_hal.cpp
     src/hal/pwm_hal.cpp
+    src/hal/adc_hal.cpp
     src/kernel/interrupt_controller.cpp
     src/system/system_bus.cpp
     src/system/clock/simulation_clock.cpp
@@ -108,6 +110,10 @@ add_executable(pwm_demo examples/pwm_demo.cpp)
 target_link_libraries(pwm_demo PRIVATE embedded_firmware_simulator)
 target_compile_options(pwm_demo PRIVATE ${EFS_WARNING_FLAGS})
 
+add_executable(adc_demo examples/adc_demo.cpp)
+target_link_libraries(adc_demo PRIVATE embedded_firmware_simulator)
+target_compile_options(adc_demo PRIVATE ${EFS_WARNING_FLAGS})
+
 # Testing Configuration
 enable_testing()
 
@@ -138,3 +144,4 @@ efs_add_test(dma_tests tests/test_dma.cpp DMATests)
 efs_add_test(spi_tests tests/test_spi.cpp SPITests)
 efs_add_test(i2c_tests tests/test_i2c.cpp I2CTests)
 efs_add_test(pwm_tests tests/test_pwm.cpp PWMTests)
+efs_add_test(adc_tests tests/test_adc.cpp ADCTests)

@@ -1,6 +1,7 @@
 #ifndef EFS_SYSTEM_SYSTEM_BUS_HPP
 #define EFS_SYSTEM_SYSTEM_BUS_HPP
 
+#include "drivers/adc/adc_controller.hpp"
 #include "drivers/dma/dma_controller.hpp"
 #include "drivers/gpio/gpio.hpp"
 #include "drivers/i2c/i2c_controller.hpp"
@@ -114,7 +115,13 @@ public:
     /// Returns attached PWM peripheral pointer.
     [[nodiscard]] drivers::pwm::PWMController* pwm() const noexcept;
 
-    /// Resets all attached peripherals (DMA, GPIO, Timers, UART, SPI, I2C, PWM, Interrupt Controller, Memory, Clock).
+    /// Attaches ADC peripheral.
+    void attachADC(drivers::adc::ADCController* adc) noexcept;
+
+    /// Returns attached ADC peripheral pointer.
+    [[nodiscard]] drivers::adc::ADCController* adc() const noexcept;
+
+    /// Resets all attached peripherals (DMA, GPIO, Timers, UART, SPI, I2C, PWM, ADC, Interrupt Controller, Memory, Clock).
     void reset();
 
 private:
@@ -130,6 +137,7 @@ private:
     drivers::spi::SPIController* m_spi{nullptr};
     drivers::i2c::I2CController* m_i2c{nullptr};
     drivers::pwm::PWMController* m_pwm{nullptr};
+    drivers::adc::ADCController* m_adc{nullptr};
 };
 
 } // namespace efs::system

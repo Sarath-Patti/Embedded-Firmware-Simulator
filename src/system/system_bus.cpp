@@ -224,6 +224,14 @@ drivers::pwm::PWMController* SystemBus::pwm() const noexcept {
     return m_pwm;
 }
 
+void SystemBus::attachADC(drivers::adc::ADCController* adc) noexcept {
+    m_adc = adc;
+}
+
+drivers::adc::ADCController* SystemBus::adc() const noexcept {
+    return m_adc;
+}
+
 void SystemBus::reset() {
     for (auto* dma : m_dmas) {
         if (dma != nullptr) {
@@ -249,6 +257,9 @@ void SystemBus::reset() {
     }
     if (m_pwm != nullptr) {
         m_pwm->reset();
+    }
+    if (m_adc != nullptr) {
+        m_adc->reset();
     }
     if (m_interruptController != nullptr) {
         m_interruptController->reset();

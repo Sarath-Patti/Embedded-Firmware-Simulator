@@ -2,7 +2,7 @@
 
 [![CI Status](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml)
 
-A high-performance, modular **C++20 Embedded Firmware Simulator** designed for bare-metal firmware development, hardware abstraction layer (HAL) validation, hardware peripheral simulation, deterministic timing analysis, low-power state management, Direct Memory Access (DMA) transfers, Serial Peripheral Interface (SPI) communication, Inter-Integrated Circuit (I²C) master communication, Pulse Width Modulation (PWM) signal generation, and real-time interactive debugging without physical hardware.
+A high-performance, modular **C++20 Embedded Firmware Simulator** designed for bare-metal firmware development, hardware abstraction layer (HAL) validation, hardware peripheral simulation, deterministic timing analysis, low-power state management, Direct Memory Access (DMA) transfers, Serial Peripheral Interface (SPI) communication, Inter-Integrated Circuit (I²C) master communication, Pulse Width Modulation (PWM) signal generation, Analog-to-Digital Converter (ADC) multi-channel sampling, and real-time interactive debugging without physical hardware.
 
 ---
 
@@ -10,12 +10,14 @@ A high-performance, modular **C++20 Embedded Firmware Simulator** designed for b
 
 Developing and testing embedded firmware on physical hardware is often constrained by limited debugging visibility, slow flashing cycles, complex hardware availability, and non-deterministic timing environments.
 
-The **Embedded Firmware Simulator** solves these challenges by providing a modular, C++20 simulated system architecture. Hardware peripherals expose standardized MMIO registers, the kernel dispatches priority interrupts, a Direct Memory Access (DMA) controller streams data between memory and peripherals, SPI, I²C, and PWM controllers manage peripheral communication and signal generation, the CPU coordinates cycle simulation steps, a cycle-driven Event Scheduler handles asynchronous peripheral events, a Hardware Abstraction Layer (HAL) isolates firmware from hardware details, a central FirmwareManager manages firmware application lifecycles, a Power Management & Reset Controller subsystem models system power states and reset behaviors, and an interactive monitor CLI gives developers complete visibility into system state in real time.
+The **Embedded Firmware Simulator** solves these challenges by providing a modular, C++20 simulated system architecture. Hardware peripherals expose standardized MMIO registers, the kernel dispatches priority interrupts, a Direct Memory Access (DMA) controller streams data between memory and peripherals, SPI, I²C, PWM, and ADC controllers manage peripheral communication and signal sampling, the CPU coordinates cycle simulation steps, a cycle-driven Event Scheduler handles asynchronous peripheral events, a Hardware Abstraction Layer (HAL) isolates firmware from hardware details, a central FirmwareManager manages firmware application lifecycles, a Power Management & Reset Controller subsystem models system power states and reset behaviors, and an interactive monitor CLI gives developers complete visibility into system state in real time.
 
 ---
 
-## Key Features (v2.1.0)
+## Key Features (v2.3.0)
 
+- **Analog-to-Digital Converter (ADC) Controller (`efs::drivers::adc::ADCController`)**: Multi-channel ADC peripheral supporting configurable resolution (8-bit, 10-bit, 12-bit), reference voltage ($V_{\text{ref}}$), input voltage sampling with saturation handling, and MMIO register integration.
+- **ADC Hardware Abstraction Layer (`efs::hal::ADCHAL`)**: Clean firmware HAL abstraction isolating firmware applications from raw ADC MMIO registers via `read()`, `enable()`, `disable()`, and `setReferenceVoltage()`.
 - **Pulse Width Modulation (PWM) Controller (`efs::drivers::pwm::PWMController`)**: Signal generator driven internally by `efs::drivers::timer::Timer`, supporting configurable signal frequency (Hz), duty cycle percentage (0–100%), output pin state evaluation, and MMIO register integration.
 - **PWM Hardware Abstraction Layer (`efs::hal::PWMHAL`)**: Clean firmware HAL abstraction isolating firmware applications from raw PWM registers via `setDutyCycle()`, `setFrequency()`, `enable()`, `disable()`, and `outputState()`.
 - **Inter-Integrated Circuit (I²C) Controller (`efs::drivers::i2c::I2CController`)**: Master-driven I²C bus controller supporting 7-bit slave addressing, START/STOP condition generation, ACK/NACK verification, multi-device attachment, and MMIO register integration.
@@ -32,7 +34,7 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
   - `TimerBlinkFirmware`: Hardware timer-driven LED blinking firmware operating via `GPIOHAL` and `TimerHAL`.
   - `UARTEchoFirmware`: Automatic serial communication echo firmware operating via `UARTHAL`.
 - **Continuous Integration Pipeline**: Automated multi-platform GitHub Actions CI matrix testing across Ubuntu, macOS, and Windows with strict compiler warning enforcement (`-Werror` / `/WX`).
-- **Hardware Abstraction Layer (`efs::hal`)**: Provides clean, stable `GPIOHAL`, `TimerHAL`, `UARTHAL`, `SPIHAL`, `I2CHAL`, and `PWMHAL` abstractions hiding raw peripheral implementation details from firmware.
+- **Hardware Abstraction Layer (`efs::hal`)**: Provides clean, stable `GPIOHAL`, `TimerHAL`, `UARTHAL`, `SPIHAL`, `I2CHAL`, `PWMHAL`, and `ADCHAL` abstractions hiding raw peripheral implementation details from firmware.
 - **Event Scheduler (`efs::system::scheduler::EventScheduler`)**: Deterministic cycle-driven event scheduler for executing callbacks at specific simulation times with strict FIFO ordering for simultaneous events.
 - **Simulation Clock (`efs::system::clock::SimulationClock`)**: Centralized deterministic timing source maintaining simulated cycle counts and calculating elapsed nanoseconds, microseconds, and milliseconds.
 - **System Bus Architecture (`efs::system::SystemBus`)**: Centralized communication layer interconnecting CPU, Memory, MMIO Bus, Interrupt Controller, Simulation Clock, Event Scheduler, Power Subsystem, DMA Controller, and Hardware Peripherals.
@@ -83,46 +85,33 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 │   Memory Subsystem  │ │   DMA   │ │  MMIO   │ │Interrupt Controller │
 └─────────────────────┘ └─────────┘ └────┬────┘ └─────────────────────┘
                                          │
-       ┌────────────────────┬────────────┼───────────┬────────────────────┐
-       ▼                    ▼            ▼           ▼                    ▼
-┌──────────────┐   ┌─────────────────┐ ┌───┐ ┌──────────────┐   ┌─────────────────┐
-│ GPIO Periph  │   │ TimerPeripheral │ │UART││SPI Controller│   │ PWM Controller  │
-└──────────────┘   └────────┬────────┘ └───┘ └──────────────┘   └────────┬────────┘
-                            │                                            │
-                            └────────────────────┬───────────────────────┘
-                                                 ▼
-                                        ┌─────────────────┐
-                                        │ Internal Timer  │
-                                        └─────────────────┘
+       ┌────────────────┬────────────────┼──────────────┬────────────────┐
+       ▼                ▼                ▼              ▼                ▼
+┌──────────────┐ ┌──────────────┐   ┌─────────┐  ┌──────────────┐ ┌──────────────┐
+│ GPIO Periph  │ │ Timer Periph │   │  UART   │  │ SPI Controlr │ │ ADC Controlr │
+└──────────────┘ └──────────────┘   └─────────┘  └──────────────┘ └──────────────┘
 ```
 
 ---
 
-## PWM Architecture & Duty Cycle Generation
+## ADC Architecture & Analog Sampling
 
-The Pulse Width Modulation (`efs::drivers::pwm::PWMController`) peripheral reuses the existing `efs::drivers::timer::Timer` peripheral internally to calculate period ticks and ON-time threshold ticks for precise square wave signal generation.
+The Analog-to-Digital Converter (`efs::drivers::adc::ADCController`) samples analog voltages across multiple input channels and converts them into digital raw values based on resolution and reference voltage.
 
 ### Register Layout
 
 | Offset | Register Name | Description |
 |---|---|---|
 | `0x00` | CTRL | Control bits: Enable (bit 0) |
-| `0x04` | FREQ | Signal frequency in Hz |
-| `0x08` | DUTY | Duty cycle percentage (0 to 100) |
-| `0x0C` | STATUS | Status bits: Enable (bit 0), Output State (bit 1) |
-| `0x10` | TIMER | Internal Timer peripheral base address |
+| `0x04` | STATUS | Status bits: Enable (bit 0), Conversion Complete (bit 1) |
+| `0x08` | RES | Resolution bits (8, 10, or 12) |
+| `0x0C` | DATA | Last digitized raw conversion value |
 
-### Duty Cycle Generation Mechanics
+### Digitization Formula & Saturation
 
-Given system clock frequency $F_{\text{sys}}$ (e.g. 1 MHz = 1,000,000 Hz) and requested PWM frequency $F_{\text{pwm}}$ (e.g. 1 kHz = 1,000 Hz):
+Given resolution $B$ bits (e.g. 12-bit, $D_{\text{max}} = 2^{12} - 1 = 4095$), reference voltage $V_{\text{ref}}$ (e.g. 3.3 V), and analog input voltage $V_{\text{in}}$:
 
-$$\text{Period Ticks} = \frac{F_{\text{sys}}}{F_{\text{pwm}}} = \frac{1,000,000}{1,000} = 1,000 \text{ ticks}$$
-
-$$\text{ON Ticks} = \frac{\text{Period Ticks} \times \text{Duty \%}}{100} = \frac{1,000 \times 25}{100} = 250 \text{ ticks}$$
-
-- When internal `Timer` counter $< \text{ON Ticks}$, `outputState() = true` (HIGH pin level).
-- When internal `Timer` counter $\ge \text{ON Ticks}$, `outputState() = false` (LOW pin level).
-- The internal `Timer` is configured with `autoReset = true` and `compare = Period Ticks`, automatically resetting the counter upon reaching the period limit.
+$$\text{Digital Value} = \begin{cases} 0 & \text{if } V_{\text{in}} \le 0.0 \\ D_{\text{max}} & \text{if } V_{\text{in}} \ge V_{\text{ref}} \text{ (Saturation)} \\ \text{round}\left( \frac{V_{\text{in}}}{V_{\text{ref}}} \times D_{\text{max}} \right) & \text{otherwise} \end{cases}$$
 
 ### Example Usage
 
@@ -130,21 +119,20 @@ $$\text{ON Ticks} = \frac{\text{Period Ticks} \times \text{Duty \%}}{100} = \fra
 efs::mmio::MMIOBus mmioBus;
 efs::system::SystemBus systemBus(nullptr, &mmioBus, nullptr);
 
-// Instantiate PWM controller at 1 kHz frequency, 50% initial duty cycle
-efs::drivers::pwm::PWMController pwm(mmioBus, 0x40006000, 1000, 50);
-systemBus.attachPWM(&pwm);
+// Instantiate ADC controller (12-bit resolution, 3.3V reference voltage, 4 channels)
+efs::drivers::adc::ADCController adc(mmioBus, 0x40007000, 12, 3.3, 4);
+systemBus.attachADC(&adc);
 
-// Access via PWM HAL
-efs::hal::PWMHAL pwmHAL(&pwm);
-pwmHAL.enable();
+// Access via ADC HAL
+efs::hal::ADCHAL adcHAL(&adc);
+adcHAL.enable();
 
-// Configure 25% duty cycle for LED dimming
-pwmHAL.setDutyCycle(25);
-assert(pwmHAL.dutyCycle() == 25);
+// Set analog input voltage on channel 0 (e.g. 1.65 V potentiometer)
+adc.setAnalogInput(0, 1.65);
 
-// Step simulation clock and observe PWM output pin state
-systemBus.tickTimers();
-bool isHigh = pwmHAL.outputState();
+// Sample via HAL -> returns 2048 (half of 4095)
+std::uint32_t rawValue = adcHAL.read(0);
+assert(rawValue == 2048);
 ```
 
 ---
