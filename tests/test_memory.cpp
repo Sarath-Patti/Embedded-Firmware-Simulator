@@ -37,12 +37,17 @@ void test_out_of_range_access() {
     // Read past boundary
     bool read_threw = false;
     try {
-        [[maybe_unused]] auto val = mem.read(256);
+        std::uint8_t val = mem.read(256);
+        if (val != 0) {
+            throw std::runtime_error("Unexpected val");
+        }
     } catch (const std::out_of_range&) {
         read_threw = true;
     }
+    if (!read_threw) {
+        throw std::runtime_error("Expected out_of_range exception for read(256)");
+    }
     assert(read_threw);
-    (void)read_threw;
 
     // Write past boundary
     bool write_threw = false;
@@ -51,18 +56,25 @@ void test_out_of_range_access() {
     } catch (const std::out_of_range&) {
         write_threw = true;
     }
+    if (!write_threw) {
+        throw std::runtime_error("Expected out_of_range exception for write(256)");
+    }
     assert(write_threw);
-    (void)write_threw;
 
     // Far out-of-bounds
     bool far_read_threw = false;
     try {
-        [[maybe_unused]] auto val = mem.read(0xFFFF);
+        std::uint8_t val = mem.read(0xFFFF);
+        if (val != 0) {
+            throw std::runtime_error("Unexpected val");
+        }
     } catch (const std::out_of_range&) {
         far_read_threw = true;
     }
+    if (!far_read_threw) {
+        throw std::runtime_error("Expected out_of_range exception for read(0xFFFF)");
+    }
     assert(far_read_threw);
-    (void)far_read_threw;
 
     std::cout << "[PASS] test_out_of_range_access\n";
 }

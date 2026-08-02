@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 using namespace efs::firmware;
@@ -55,15 +56,19 @@ void test_registration_and_lookup() {
     auto fw2 = std::make_shared<MockLifecycleFirmware>();
 
     bool reg1 = mgr.registerFirmware("Firmware1", fw1);
+    if (!reg1) {
+        throw std::runtime_error("First firmware registration failed");
+    }
     assert(reg1);
-    (void)reg1;
     assert(mgr.count() == 1);
     assert(mgr.hasFirmware("Firmware1"));
     assert(mgr.activeFirmwareName() == "Firmware1");
 
     bool reg2 = mgr.registerFirmware("Firmware2", fw2);
+    if (!reg2) {
+        throw std::runtime_error("Second firmware registration failed");
+    }
     assert(reg2);
-    (void)reg2;
     assert(mgr.count() == 2);
     assert(mgr.hasFirmware("Firmware2"));
 
@@ -89,8 +94,10 @@ void test_active_selection_and_switching() {
 
     // Switching active firmware shuts down App1
     bool switch_ok = mgr.setActiveFirmware("App2");
+    if (!switch_ok) {
+        throw std::runtime_error("Firmware switch failed");
+    }
     assert(switch_ok);
-    (void)switch_ok;
 
     assert(fw1->shutdown_count == 1);
     assert(mgr.activeFirmwareName() == "App2");
@@ -137,8 +144,10 @@ void test_unregistration_behavior() {
 
     // Unregistering active firmware shuts it down and selects remaining
     bool unreg_ok = mgr.unregisterFirmware("A");
+    if (!unreg_ok) {
+        throw std::runtime_error("Unregister firmware failed");
+    }
     assert(unreg_ok);
-    (void)unreg_ok;
 
     assert(fw1->shutdown_count == 1);
     assert(!mgr.hasFirmware("A"));
@@ -255,8 +264,10 @@ void test_cpu_integration_with_firmware_manager() {
     auto basicFw = std::make_shared<BasicFirmware>(gpioHAL, PIN, INTERVAL);
 
     bool load_ok = cpu.loadFirmware(basicFw, "Basic");
+    if (!load_ok) {
+        throw std::runtime_error("CPU load firmware failed");
+    }
     assert(load_ok);
-    (void)load_ok;
     assert(cpu.firmwareLoaded());
     assert(cpu.firmwareManager().activeFirmwareName() == "Basic");
 

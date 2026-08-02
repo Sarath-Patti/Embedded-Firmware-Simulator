@@ -56,12 +56,17 @@ void test_invalid_register_index() {
 
     bool read_threw = false;
     try {
-        [[maybe_unused]] auto val = rf.readRegister(NUM_GPRS);
+        efs::common::DWord val = rf.readRegister(NUM_GPRS);
+        if (val != 0) {
+            throw std::runtime_error("Unexpected val");
+        }
     } catch (const std::out_of_range&) {
         read_threw = true;
     }
+    if (!read_threw) {
+        throw std::runtime_error("Expected out_of_range exception for readRegister out of bounds");
+    }
     assert(read_threw);
-    (void)read_threw;
 
     bool write_threw = false;
     try {
@@ -69,8 +74,10 @@ void test_invalid_register_index() {
     } catch (const std::out_of_range&) {
         write_threw = true;
     }
+    if (!write_threw) {
+        throw std::runtime_error("Expected out_of_range exception for writeRegister out of bounds");
+    }
     assert(write_threw);
-    (void)write_threw;
 
     std::cout << "[PASS] test_invalid_register_index\n";
 }

@@ -43,8 +43,10 @@ void test_frequency_configuration() {
     } catch (const std::invalid_argument&) {
         threw_zero = true;
     }
+    if (!threw_zero) {
+        throw std::runtime_error("Expected invalid_argument exception for zero frequency");
+    }
     assert(threw_zero);
-    (void)threw_zero;
 
     std::cout << "[PASS] test_frequency_configuration\n";
 }
@@ -101,8 +103,11 @@ void test_monitor_clock_output() {
     std::ostringstream ss;
 
     bool exec_ok = monitor.executeCommand("clock", ss);
+    if (!exec_ok) {
+        throw std::runtime_error("Monitor clock command failed");
+    }
     assert(exec_ok);
-    (void)exec_ok;
+
     std::string out = ss.str();
 
     assert(out.find("Clock") != std::string::npos);

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 
 class MockFirmware : public efs::firmware::Firmware {
 public:
@@ -39,8 +40,10 @@ void test_firmware_loading() {
 
     auto fw = std::make_shared<MockFirmware>();
     bool load_ok = cpu.loadFirmware(fw);
+    if (!load_ok) {
+        throw std::runtime_error("Firmware load failed");
+    }
     assert(load_ok);
-    (void)load_ok;
     assert(cpu.firmwareLoaded());
     assert(cpu.firmware() == fw);
 

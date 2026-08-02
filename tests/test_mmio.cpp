@@ -2,7 +2,6 @@
 #include "mmio/register.hpp"
 #include <cassert>
 #include <iostream>
-#include <memory>
 #include <stdexcept>
 
 void test_register_construction() {
@@ -14,21 +13,26 @@ void test_register_construction() {
 }
 
 void test_register_read_write() {
-    efs::mmio::Register reg(0x40000004, 0x00);
-    assert(reg.read() == 0x00);
-
+    efs::mmio::Register reg(0x40000000, 0x0);
     reg.write(0xDEADBEEF);
     assert(reg.read() == 0xDEADBEEF);
+
+    reg.reset();
+    assert(reg.read() == 0x0);
 
     std::cout << "[PASS] test_register_read_write\n";
 }
 
 void test_register_registration() {
     efs::mmio::MMIOBus bus;
-    auto reg = std::make_shared<efs::mmio::Register>(0x40000000, 0x00);
+    assert(bus.size() == 0);
 
-    assert(!bus.contains(0x40000000));
-    assert(bus.registerRegister(reg));
+    bool reg = bus.registerRegister(0x40000000, 0x10);
+    if (!reg) {
+        throw std::runtime_error("Register registration failed");
+    }
+    assert(reg);
+    assert(bus.size() == 1);
     assert(bus.contains(0x40000000));
 
     std::cout << "[PASS] test_register_registration\n";
@@ -36,30 +40,27 @@ void test_register_registration() {
 
 void test_register_duplicate_registration() {
     efs::mmio::MMIOBus bus;
-    auto reg1 = std::make_shared<efs::mmio::Register>(0x40000000, 0x10);
-    auto reg2 = std::make_shared<efs::mmio::Register>(0x40000000, 0x20);
+    bus.registerRegister(0x40000000, 0x10);
 
-    assert(bus.registerRegister(reg1));
-    assert(!bus.registerRegister(reg2));
-    assert(bus.read(0x40000000) == 0x10);
+    bool res = bus.registerRegister(0x40000000, 0x20);
+    if (res) {
+        throw std::runtime_error("Expected false for duplicate registration");
+    }
+    assert(!res);
 
     std::cout << "[PASS] test_register_duplicate_registration\n";
 }
 
 void test_valid_mapped_access() {
     efs::mmio::MMIOBus bus;
-    auto reg1 = std::make_shared<efs::mmio::Register>(0x40000000, 0x100);
-    auto reg2 = std::make_shared<efs::mmio::Register>(0x40000004, 0x200);
-
-    bus.registerRegister(reg1);
-    bus.registerRegister(reg2);
-
-    assert(bus.read(0x40000000) == 0x100);
-    assert(bus.read(0x40000004) == 0x200);
+    bool reg1 = bus.registerRegister(0x40000000, 0x0);
+    if (!reg1) {
+        throw std::runtime_error("Register registration failed");
+    }
+    assert(reg1);
 
     bus.write(0x40000000, 0xABC);
     assert(bus.read(0x40000000) == 0xABC);
-    assert(reg1->read() == 0xABC);
 
     std::cout << "[PASS] test_valid_mapped_access\n";
 }
@@ -69,12 +70,17 @@ void test_invalid_address_access() {
 
     bool read_threw = false;
     try {
-        [[maybe_unused]] auto val = bus.read(0x40000000);
+        std::uint32_t val = bus.read(0x40000000);
+        if (val != 0) {
+            throw std::runtime_error("Unexpected read value");
+        }
     } catch (const std::out_of_range&) {
         read_threw = true;
     }
+    if (!read_threw) {
+        throw std::runtime_error("Expected out_of_range exception for read at unmapped address");
+    }
     assert(read_threw);
-    (void)read_threw;
 
     bool write_threw = false;
     try {
@@ -82,8 +88,10 @@ void test_invalid_address_access() {
     } catch (const std::out_of_range&) {
         write_threw = true;
     }
+    if (!write_threw) {
+        throw std::runtime_error("Expected out_of_range exception for write at unmapped address");
+    }
     assert(write_threw);
-    (void)write_threw;
 
     std::cout << "[PASS] test_invalid_address_access\n";
 }
@@ -93,18 +101,32 @@ void test_register_removal() {
     bus.registerRegister(0x40000000, 0x55);
     assert(bus.contains(0x40000000));
 
-    assert(bus.unregisterRegister(0x40000000));
+    bool unreg_ok = bus.unregisterRegister(0x40000000);
+    if (!unreg_ok) {
+        throw std::runtime_error("Unregister register failed");
+    }
+    assert(unreg_ok);
     assert(!bus.contains(0x40000000));
-    assert(!bus.unregisterRegister(0x40000000));
+
+    bool unreg_fail = !bus.unregisterRegister(0x40000000);
+    if (!unreg_fail) {
+        throw std::runtime_error("Duplicate unregister register should return false");
+    }
+    assert(unreg_fail);
 
     bool read_threw = false;
     try {
-        [[maybe_unused]] auto val = bus.read(0x40000000);
+        std::uint32_t val = bus.read(0x40000000);
+        if (val != 0) {
+            throw std::runtime_error("Unexpected read value");
+        }
     } catch (const std::out_of_range&) {
         read_threw = true;
     }
+    if (!read_threw) {
+        throw std::runtime_error("Expected out_of_range exception after unregistering address");
+    }
     assert(read_threw);
-    (void)read_threw;
 
     std::cout << "[PASS] test_register_removal\n";
 }

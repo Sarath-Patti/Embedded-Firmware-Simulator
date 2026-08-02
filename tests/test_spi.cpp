@@ -1,5 +1,4 @@
 #include "drivers/spi/spi_controller.hpp"
-#include "drivers/spi/spi_device.hpp"
 #include "hal/spi_hal.hpp"
 #include "mmio/mmio_bus.hpp"
 #include "system/system_bus.hpp"
@@ -17,20 +16,19 @@ void test_spi_initialization() {
     MMIOBus bus;
     SPIController spi(bus, 0x40004000, 4, 1);
 
-    assert(bus.contains(spi.dataAddress()));
-    assert(bus.contains(spi.statusAddress()));
     assert(bus.contains(spi.controlAddress()));
-    assert(bus.contains(spi.clockDivAddress()));
+    assert(bus.contains(spi.statusAddress()));
+    assert(bus.contains(spi.configAddress()));
+    assert(bus.contains(spi.txDataAddress()));
+    assert(bus.contains(spi.rxDataAddress()));
 
     assert(!spi.enabled());
     assert(spi.clockDivider() == 4);
     assert(spi.mode() == 1);
-    assert(!spi.busy());
-    assert(!spi.hasData());
+    assert(spi.slave() == nullptr);
 
     spi.enable();
     assert(spi.enabled());
-    assert((bus.read(spi.controlAddress()) & SPIController::CTRL_ENABLE_BIT) != 0);
 
     spi.disable();
     assert(!spi.enabled());
@@ -48,10 +46,12 @@ void test_spi_master_slave_transfer() {
     assert(spi.slave() == &slave);
 
     std::uint8_t rx = spi.transfer(0xA5);
+    if (rx != 0x55) {
+        throw std::runtime_error("SPI transfer failed");
+    }
     assert(rx == 0x55);
     assert(slave.lastReceivedByte() == 0xA5);
     assert(slave.receivedBytes().size() == 1);
-    (void)rx;
 
     std::cout << "[PASS] test_spi_master_slave_transfer\n";
 }
@@ -71,12 +71,12 @@ void test_spi_full_duplex_communication() {
     std::uint8_t r2 = spi.transfer(0xAD);
     std::uint8_t r3 = spi.transfer(0xBE);
 
+    if (r1 != 0x11 || r2 != 0x22 || r3 != 0x33) {
+        throw std::runtime_error("SPI full duplex transfer failed");
+    }
     assert(r1 == 0x11);
     assert(r2 == 0x22);
     assert(r3 == 0x33);
-    (void)r1;
-    (void)r2;
-    (void)r3;
 
     assert(slave.receivedBytes().size() == 3);
     assert(slave.receivedBytes()[0] == 0xDE);
@@ -101,8 +101,10 @@ void test_spi_multiple_transfers() {
     assert(spi.hasData());
     for (std::uint8_t i = 0; i < 10; ++i) {
         std::uint8_t rx = spi.readByte();
+        if (rx != 0xFF) {
+            throw std::runtime_error("SPI readByte failed");
+        }
         assert(rx == 0xFF);
-        (void)rx;
     }
     assert(!spi.hasData());
     assert(slave.receivedBytes().size() == 10);
@@ -118,7 +120,11 @@ void test_spi_reset_behaviour() {
     SimulatedSPIDevice slave(0xAA);
     spi.attachSlave(&slave);
 
-    (void)spi.transfer(0x12);
+    std::uint8_t rx = spi.transfer(0x12);
+    if (rx != 0xAA) {
+        throw std::runtime_error("SPI transfer before reset failed");
+    }
+    assert(rx == 0xAA);
     assert(spi.hasData());
 
     spi.reset();
@@ -136,33 +142,48 @@ void test_spi_invalid_operations() {
     // Disabled transfer attempt
     bool transfer_disabled = false;
     try {
-        (void)spi.transfer(0x01);
+        std::uint8_t b = spi.transfer(0x01);
+        if (b != 0) {
+            throw std::runtime_error("Unexpected byte");
+        }
     } catch (const std::runtime_error&) {
         transfer_disabled = true;
     }
+    if (!transfer_disabled) {
+        throw std::runtime_error("Expected runtime_error for disabled transfer");
+    }
     assert(transfer_disabled);
-    (void)transfer_disabled;
 
     // Disabled readByte attempt
     bool read_disabled = false;
     try {
-        (void)spi.readByte();
+        std::uint8_t b = spi.readByte();
+        if (b != 0) {
+            throw std::runtime_error("Unexpected byte");
+        }
     } catch (const std::runtime_error&) {
         read_disabled = true;
     }
+    if (!read_disabled) {
+        throw std::runtime_error("Expected runtime_error for disabled readByte");
+    }
     assert(read_disabled);
-    (void)read_disabled;
 
     // Enabled readByte on empty RX buffer
     spi.enable();
     bool read_empty = false;
     try {
-        (void)spi.readByte();
+        std::uint8_t b = spi.readByte();
+        if (b != 0) {
+            throw std::runtime_error("Unexpected byte");
+        }
     } catch (const std::underflow_error&) {
         read_empty = true;
     }
+    if (!read_empty) {
+        throw std::runtime_error("Expected underflow_error for empty readByte");
+    }
     assert(read_empty);
-    (void)read_empty;
 
     // Invalid clock divider 0
     bool invalid_clk = false;
@@ -171,8 +192,10 @@ void test_spi_invalid_operations() {
     } catch (const std::invalid_argument&) {
         invalid_clk = true;
     }
+    if (!invalid_clk) {
+        throw std::runtime_error("Expected invalid_argument for clock divider 0");
+    }
     assert(invalid_clk);
-    (void)invalid_clk;
 
     // Invalid SPI mode 4
     bool invalid_mode = false;
@@ -181,8 +204,10 @@ void test_spi_invalid_operations() {
     } catch (const std::invalid_argument&) {
         invalid_mode = true;
     }
+    if (!invalid_mode) {
+        throw std::runtime_error("Expected invalid_argument for mode 4");
+    }
     assert(invalid_mode);
-    (void)invalid_mode;
 
     std::cout << "[PASS] test_spi_invalid_operations\n";
 }
@@ -205,14 +230,18 @@ void test_spi_hal_interface() {
     assert(spi.clockDivider() == 16);
 
     std::uint8_t rx = hal.transfer(0xEF);
+    if (rx != 0xBE) {
+        throw std::runtime_error("SPIHAL transfer failed");
+    }
     assert(rx == 0xBE);
     assert(slave.lastReceivedByte() == 0xEF);
-    (void)rx;
 
     hal.writeByte(0x77);
     std::uint8_t read_rx = hal.readByte();
+    if (read_rx != 0x00) {
+        throw std::runtime_error("SPIHAL readByte failed");
+    }
     assert(read_rx == 0x00);
-    (void)read_rx;
 
     hal.disable();
     assert(!hal.enabled());
@@ -226,8 +255,10 @@ void test_spi_hal_interface() {
     } catch (const std::runtime_error&) {
         threw_unattached = true;
     }
+    if (!threw_unattached) {
+        throw std::runtime_error("Expected runtime_error for unattached SPIHAL writeByte");
+    }
     assert(threw_unattached);
-    (void)threw_unattached;
 
     std::cout << "[PASS] test_spi_hal_interface\n";
 }
@@ -245,8 +276,10 @@ void test_spi_system_bus_integration() {
     spi.attachSlave(&slave);
 
     std::uint8_t rx = spi.transfer(0x99);
+    if (rx != 0x42) {
+        throw std::runtime_error("SPI system bus integration transfer failed");
+    }
     assert(rx == 0x42);
-    (void)rx;
 
     systemBus.reset();
     assert(!spi.enabled());

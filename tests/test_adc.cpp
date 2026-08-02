@@ -56,8 +56,10 @@ void test_adc_resolution_changes() {
     } catch (const std::invalid_argument&) {
         invalid_res = true;
     }
+    if (!invalid_res) {
+        throw std::runtime_error("Expected invalid_argument exception for resolution 16");
+    }
     assert(invalid_res);
-    (void)invalid_res;
 
     std::cout << "[PASS] test_adc_resolution_changes\n";
 }
@@ -75,8 +77,10 @@ void test_adc_reference_voltage() {
     } catch (const std::invalid_argument&) {
         invalid_ref = true;
     }
+    if (!invalid_ref) {
+        throw std::runtime_error("Expected invalid_argument exception for reference voltage 0.0");
+    }
     assert(invalid_ref);
-    (void)invalid_ref;
 
     std::cout << "[PASS] test_adc_reference_voltage\n";
 }
@@ -89,22 +93,28 @@ void test_adc_analog_sampling() {
     // 0V input (zero scale) -> raw = 0
     adc.setAnalogInput(0, 0.0);
     std::uint32_t raw0 = adc.sample(0);
+    if (raw0 != 0) {
+        throw std::runtime_error("ADC raw0 sampling failed");
+    }
     assert(raw0 == 0);
-    (void)raw0;
 
     // 1.65V input (half-scale of 3.3V) -> 12-bit max = 4095, half = 2048
     adc.setAnalogInput(0, 1.65);
     std::uint32_t rawHalf = adc.sample(0);
+    if (rawHalf != 2048) {
+        throw std::runtime_error("ADC rawHalf sampling failed");
+    }
     assert(rawHalf == 2048);
     assert(adc.lastSample() == 2048);
     assert(bus.read(adc.dataAddress()) == 2048);
-    (void)rawHalf;
 
     // 3.3V input (full-scale ref) -> 4095
     adc.setAnalogInput(0, 3.3);
     std::uint32_t rawFull = adc.sample(0);
+    if (rawFull != 4095) {
+        throw std::runtime_error("ADC rawFull sampling failed");
+    }
     assert(rawFull == 4095);
-    (void)rawFull;
 
     std::cout << "[PASS] test_adc_analog_sampling\n";
 }
@@ -136,8 +146,10 @@ void test_adc_saturation() {
     // Exceed reference voltage -> saturates at max 1023
     adc.setAnalogInput(0, 4.5);
     std::uint32_t raw = adc.sample(0);
+    if (raw != 1023) {
+        throw std::runtime_error("ADC saturation sampling failed");
+    }
     assert(raw == 1023);
-    (void)raw;
 
     std::cout << "[PASS] test_adc_saturation\n";
 }
@@ -153,8 +165,10 @@ void test_adc_invalid_channels() {
     } catch (const std::out_of_range&) {
         invalid_ch_set = true;
     }
+    if (!invalid_ch_set) {
+        throw std::runtime_error("Expected out_of_range exception for channel 5 set");
+    }
     assert(invalid_ch_set);
-    (void)invalid_ch_set;
 
     bool invalid_ch_sample = false;
     try {
@@ -162,8 +176,10 @@ void test_adc_invalid_channels() {
     } catch (const std::out_of_range&) {
         invalid_ch_sample = true;
     }
+    if (!invalid_ch_sample) {
+        throw std::runtime_error("Expected out_of_range exception for channel 5 sample");
+    }
     assert(invalid_ch_sample);
-    (void)invalid_ch_sample;
 
     std::cout << "[PASS] test_adc_invalid_channels\n";
 }
@@ -202,8 +218,10 @@ void test_adc_hal_interface() {
 
     adc.setAnalogInput(1, 2.5);
     std::uint32_t val = hal.read(1);
+    if (val != 2048) {
+        throw std::runtime_error("ADCHAL read failed");
+    }
     assert(val == 2048);
-    (void)val;
 
     hal.disable();
     assert(!hal.enabled());
@@ -218,8 +236,10 @@ void test_adc_hal_interface() {
     } catch (const std::runtime_error&) {
         threw_unattached = true;
     }
+    if (!threw_unattached) {
+        throw std::runtime_error("Expected runtime_error exception for unattached ADCHAL");
+    }
     assert(threw_unattached);
-    (void)threw_unattached;
 
     std::cout << "[PASS] test_adc_hal_interface\n";
 }

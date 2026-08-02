@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <stdexcept>
 
 using namespace efs::hal;
 using namespace efs::drivers::gpio;
@@ -44,10 +45,6 @@ void test_gpio_hal() {
     assert(!unattached.isAttached());
     unattached.configureOutput(PIN1);
     assert(!unattached.read(PIN1));
-
-    (void)PIN3;
-    (void)PIN4;
-    (void)PIN1;
 
     std::cout << "[PASS] test_gpio_hal\n";
 }
@@ -143,7 +140,6 @@ void test_firmware_using_hal() {
     fw.shutdown();
     assert(fw.isShutdown());
     assert(!hal.read(PIN1));
-    (void)PIN1;
 
     std::cout << "[PASS] test_firmware_using_hal\n";
 }

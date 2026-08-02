@@ -7,6 +7,7 @@
 #include "cpu/cpu.hpp"
 #include <cassert>
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 
 using namespace efs::drivers::dma;
@@ -25,12 +26,16 @@ void test_dma_memory_to_memory() {
 
     DMAController dma(&mem, nullptr, nullptr);
     bool cfg_ok = dma.configure(0x100, 0x200, 8);
+    if (!cfg_ok) {
+        throw std::runtime_error("DMA configure failed");
+    }
     assert(cfg_ok);
-    (void)cfg_ok;
 
     bool start_ok = dma.start();
+    if (!start_ok) {
+        throw std::runtime_error("DMA start failed");
+    }
     assert(start_ok);
-    (void)start_ok;
     assert(dma.busy());
 
     for (int i = 0; i < 8; ++i) {
@@ -45,9 +50,10 @@ void test_dma_memory_to_memory() {
     for (std::size_t i = 0; i < 8; ++i) {
         auto val = mem.read(0x200 + i);
         auto expected = static_cast<efs::common::Byte>(0x10 + i);
+        if (val != expected) {
+            throw std::runtime_error("Memory to memory copy failed");
+        }
         assert(val == expected);
-        (void)val;
-        (void)expected;
     }
 
     std::cout << "[PASS] test_dma_memory_to_memory\n";
@@ -66,12 +72,16 @@ void test_dma_memory_to_mmio() {
 
     DMAController dma(&mem, &bus, nullptr, &uart);
     bool cfg_ok = dma.configure(0x050, 0x40003000, msg.size()); // 0x40003000 is UART DATA register
+    if (!cfg_ok) {
+        throw std::runtime_error("DMA configure failed");
+    }
     assert(cfg_ok);
-    (void)cfg_ok;
 
     bool start_ok = dma.start();
+    if (!start_ok) {
+        throw std::runtime_error("DMA start failed");
+    }
     assert(start_ok);
-    (void)start_ok;
 
     for (std::size_t i = 0; i < msg.size(); ++i) {
         dma.step();
@@ -83,9 +93,10 @@ void test_dma_memory_to_mmio() {
 
     for (char c : msg) {
         auto val = uart.popTxByte();
+        if (val != static_cast<efs::common::Byte>(c)) {
+            throw std::runtime_error("Memory to MMIO copy failed");
+        }
         assert(val == static_cast<efs::common::Byte>(c));
-        (void)val;
-        (void)c;
     }
 
     std::cout << "[PASS] test_dma_memory_to_mmio\n";
@@ -104,12 +115,16 @@ void test_dma_mmio_to_memory() {
 
     DMAController dma(&mem, &bus, nullptr, &uart);
     bool cfg_ok = dma.configure(0x40003000, 0x300, 3);
+    if (!cfg_ok) {
+        throw std::runtime_error("DMA configure failed");
+    }
     assert(cfg_ok);
-    (void)cfg_ok;
 
     bool start_ok = dma.start();
+    if (!start_ok) {
+        throw std::runtime_error("DMA start failed");
+    }
     assert(start_ok);
-    (void)start_ok;
 
     for (int i = 0; i < 3; ++i) {
         dma.step();
@@ -119,12 +134,12 @@ void test_dma_mmio_to_memory() {
     auto byte0 = mem.read(0x300);
     auto byte1 = mem.read(0x301);
     auto byte2 = mem.read(0x302);
+    if (byte0 != 'A' || byte1 != 'B' || byte2 != 'C') {
+        throw std::runtime_error("MMIO to Memory copy failed");
+    }
     assert(byte0 == 'A');
     assert(byte1 == 'B');
     assert(byte2 == 'C');
-    (void)byte0;
-    (void)byte1;
-    (void)byte2;
 
     std::cout << "[PASS] test_dma_mmio_to_memory\n";
 }
@@ -159,8 +174,10 @@ void test_dma_invalid_transfers() {
     DMAController unattachedDma;
     unattachedDma.configure(0x10, 0x20, 5);
     bool start_fail = !unattachedDma.start();
+    if (!start_fail) {
+        throw std::runtime_error("Unattached DMA start should fail");
+    }
     assert(start_fail);
-    (void)start_fail;
     assert(unattachedDma.hasError());
 
     // Out of bounds address
@@ -168,8 +185,10 @@ void test_dma_invalid_transfers() {
     DMAController dma(&mem, nullptr, nullptr);
     dma.configure(0x1000, 0x20, 5);
     bool start_oob = !dma.start();
+    if (!start_oob) {
+        throw std::runtime_error("OOB DMA start should fail");
+    }
     assert(start_oob);
-    (void)start_oob;
     assert(dma.hasError());
 
     std::cout << "[PASS] test_dma_invalid_transfers\n";
@@ -180,8 +199,10 @@ void test_dma_zero_length() {
     DMAController dma(&mem, nullptr, nullptr);
     dma.configure(0x100, 0x200, 0);
     bool start_ok = dma.start();
+    if (!start_ok) {
+        throw std::runtime_error("Zero length DMA start failed");
+    }
     assert(start_ok);
-    (void)start_ok;
 
     assert(!dma.busy());
     assert(dma.completed());
@@ -221,8 +242,10 @@ void test_dma_system_bus_integration() {
     DMAController dma;
 
     bool attach_ok = systemBus.attachDMA(&dma);
+    if (!attach_ok) {
+        throw std::runtime_error("Attach DMA failed");
+    }
     assert(attach_ok);
-    (void)attach_ok;
     assert(systemBus.dma() == &dma);
 
     CPU cpu(&systemBus);
@@ -237,10 +260,11 @@ void test_dma_system_bus_integration() {
     assert(dma.completed());
     auto byte10 = mem.read(0x10);
     auto byte11 = mem.read(0x11);
+    if (byte10 != 0xAA || byte11 != 0xBB) {
+        throw std::runtime_error("DMA system bus integration transfer failed");
+    }
     assert(byte10 == 0xAA);
     assert(byte11 == 0xBB);
-    (void)byte10;
-    (void)byte11;
 
     std::cout << "[PASS] test_dma_system_bus_integration\n";
 }

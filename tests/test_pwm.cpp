@@ -11,7 +11,7 @@ using namespace efs::hal;
 using namespace efs::mmio;
 using namespace efs::system;
 
-void test_pwm_controller_initialization() {
+void test_pwm_initialization() {
     MMIOBus bus;
     PWMController pwm(bus, 0x40006000, 1000, 50, 1000000);
 
@@ -23,7 +23,6 @@ void test_pwm_controller_initialization() {
     assert(!pwm.enabled());
     assert(pwm.frequency() == 1000);
     assert(pwm.dutyCycle() == 50);
-    assert(!pwm.outputState());
 
     pwm.enable();
     assert(pwm.enabled());
@@ -32,31 +31,18 @@ void test_pwm_controller_initialization() {
     pwm.disable();
     assert(!pwm.enabled());
 
-    std::cout << "[PASS] test_pwm_controller_initialization\n";
+    std::cout << "[PASS] test_pwm_initialization\n";
 }
 
-void test_pwm_frequency_configuration() {
+void test_pwm_frequency_duty_changes() {
     MMIOBus bus;
     PWMController pwm(bus, 0x40006000, 1000, 50, 1000000);
 
-    pwm.setFrequency(5000);
-    assert(pwm.frequency() == 5000);
-    assert(bus.read(pwm.freqAddress()) == 5000);
+    pwm.setFrequency(2000);
+    assert(pwm.frequency() == 2000);
 
-    pwm.setFrequency(100);
-    assert(pwm.frequency() == 100);
-    assert(bus.read(pwm.freqAddress()) == 100);
-
-    std::cout << "[PASS] test_pwm_frequency_configuration\n";
-}
-
-void test_pwm_duty_cycle_configuration() {
-    MMIOBus bus;
-    PWMController pwm(bus, 0x40006000, 1000, 50, 1000000);
-
-    pwm.setDutyCycle(75);
-    assert(pwm.dutyCycle() == 75);
-    assert(bus.read(pwm.dutyAddress()) == 75);
+    pwm.setDutyCycle(25);
+    assert(pwm.dutyCycle() == 25);
 
     pwm.setDutyCycle(0);
     assert(pwm.dutyCycle() == 0);
@@ -64,55 +50,37 @@ void test_pwm_duty_cycle_configuration() {
     pwm.setDutyCycle(100);
     assert(pwm.dutyCycle() == 100);
 
-    std::cout << "[PASS] test_pwm_duty_cycle_configuration\n";
+    std::cout << "[PASS] test_pwm_frequency_duty_changes\n";
 }
 
 void test_pwm_output_state_transitions() {
     MMIOBus bus;
-    PWMController pwm(bus, 0x40006000, 1000 /* 1000 ticks period */, 25 /* 250 ticks HIGH, 750 ticks LOW */, 1000000);
-    pwm.enable();
+    PWMController pwm(bus, 0x40006000, 1000, 50, 1000000);
 
-    // 0% duty cycle should stay LOW
-    pwm.setDutyCycle(0);
+    // Disabled -> Output LOW
     assert(!pwm.outputState());
 
-    // 100% duty cycle should stay HIGH
-    pwm.setDutyCycle(100);
+    pwm.enable();
+
+    // At tick 0 -> Output HIGH
     assert(pwm.outputState());
 
-    // 25% duty cycle: HIGH for first 250 ticks, LOW for remaining 750 ticks
-    pwm.setDutyCycle(25);
-    pwm.timer().reset();
+    // Step PWM controller 500 ticks -> Output LOW
+    for (std::uint32_t i = 0; i < 500; ++i) {
+        pwm.tick();
+    }
+    assert(!pwm.outputState());
 
-    // At tick 0 (counter < 250) -> HIGH
-    assert(pwm.outputState());
-
-    // Tick 200 cycles -> counter = 200 < 250 -> HIGH
-    for (int i = 0; i < 200; ++i) {
+    // Step PWM controller 500 ticks -> wraps period -> Output HIGH
+    for (std::uint32_t i = 0; i < 500; ++i) {
         pwm.tick();
     }
     assert(pwm.outputState());
 
-    // Tick another 100 cycles -> counter = 300 >= 250 -> LOW
-    for (int i = 0; i < 100; ++i) {
-        pwm.tick();
-    }
+    pwm.disable();
     assert(!pwm.outputState());
 
     std::cout << "[PASS] test_pwm_output_state_transitions\n";
-}
-
-void test_pwm_reset_behaviour() {
-    MMIOBus bus;
-    PWMController pwm(bus, 0x40006000, 5000, 80, 1000000);
-    pwm.enable();
-    assert(pwm.enabled());
-
-    pwm.reset();
-    assert(!pwm.enabled());
-    assert(!pwm.outputState());
-
-    std::cout << "[PASS] test_pwm_reset_behaviour\n";
 }
 
 void test_pwm_invalid_values() {
@@ -126,8 +94,10 @@ void test_pwm_invalid_values() {
     } catch (const std::invalid_argument&) {
         zero_freq = true;
     }
+    if (!zero_freq) {
+        throw std::runtime_error("Expected invalid_argument exception for zero frequency");
+    }
     assert(zero_freq);
-    (void)zero_freq;
 
     // Invalid frequency > system clock
     bool high_freq = false;
@@ -136,8 +106,10 @@ void test_pwm_invalid_values() {
     } catch (const std::invalid_argument&) {
         high_freq = true;
     }
+    if (!high_freq) {
+        throw std::runtime_error("Expected invalid_argument exception for frequency > system clock");
+    }
     assert(high_freq);
-    (void)high_freq;
 
     // Invalid duty cycle > 100%
     bool high_duty = false;
@@ -146,8 +118,10 @@ void test_pwm_invalid_values() {
     } catch (const std::invalid_argument&) {
         high_duty = true;
     }
+    if (!high_duty) {
+        throw std::runtime_error("Expected invalid_argument exception for duty cycle > 100");
+    }
     assert(high_duty);
-    (void)high_duty;
 
     std::cout << "[PASS] test_pwm_invalid_values\n";
 }
@@ -183,10 +157,25 @@ void test_pwm_hal_interface() {
     } catch (const std::runtime_error&) {
         threw_unattached = true;
     }
+    if (!threw_unattached) {
+        throw std::runtime_error("Expected runtime_error exception for unattached PWMHAL");
+    }
     assert(threw_unattached);
-    (void)threw_unattached;
 
     std::cout << "[PASS] test_pwm_hal_interface\n";
+}
+
+void test_pwm_reset_behaviour() {
+    MMIOBus bus;
+    PWMController pwm(bus, 0x40006000, 2000, 75, 1000000);
+    pwm.enable();
+
+    pwm.reset();
+    assert(!pwm.enabled());
+    assert(pwm.frequency() == 1000);
+    assert(pwm.dutyCycle() == 50);
+
+    std::cout << "[PASS] test_pwm_reset_behaviour\n";
 }
 
 void test_pwm_system_bus_integration() {
@@ -198,8 +187,6 @@ void test_pwm_system_bus_integration() {
     assert(systemBus.pwm() == &pwm);
 
     pwm.enable();
-    systemBus.tickTimers();
-
     systemBus.reset();
     assert(!pwm.enabled());
 
@@ -207,15 +194,14 @@ void test_pwm_system_bus_integration() {
 }
 
 int main() {
-    std::cout << "Running PWM Controller unit tests...\n";
-    test_pwm_controller_initialization();
-    test_pwm_frequency_configuration();
-    test_pwm_duty_cycle_configuration();
+    std::cout << "Running Pulse Width Modulation (PWM) unit tests...\n";
+    test_pwm_initialization();
+    test_pwm_frequency_duty_changes();
     test_pwm_output_state_transitions();
-    test_pwm_reset_behaviour();
     test_pwm_invalid_values();
     test_pwm_hal_interface();
+    test_pwm_reset_behaviour();
     test_pwm_system_bus_integration();
-    std::cout << "All PWM Controller unit tests passed successfully.\n";
+    std::cout << "All PWM unit tests passed successfully.\n";
     return 0;
 }

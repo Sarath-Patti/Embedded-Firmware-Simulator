@@ -2,12 +2,13 @@
 #define EFS_CPU_CPU_HPP
 
 #include "common/types.hpp"
+#include "cpu/registers/register_file.hpp"
 #include "drivers/dma/dma_controller.hpp"
 #include "drivers/timer/timer.hpp"
-#include "kernel/interrupt_controller.hpp"
 #include "firmware/firmware.hpp"
 #include "firmware/firmware_manager.hpp"
-#include "cpu/registers/register_file.hpp"
+#include "kernel/interrupt_controller.hpp"
+#include "rtos/rtos_scheduler.hpp"
 #include "system/power/power_controller.hpp"
 #include "system/system_bus.hpp"
 #include <memory>
@@ -16,7 +17,7 @@
 
 namespace efs::cpu {
 
-/// Central CPU execution engine coordinating cycle simulation steps, SystemBus, FirmwareManager, and PowerController.
+/// Central CPU execution engine coordinating cycle simulation steps, SystemBus, FirmwareManager, RTOS Scheduler, and PowerController.
 class CPU {
 public:
     explicit CPU(system::SystemBus* systemBus = nullptr);
@@ -49,23 +50,28 @@ public:
     /// Returns pointer to attached SystemBus.
     [[nodiscard]] system::SystemBus* systemBus() const noexcept;
 
+    /// Attaches RTOS Task Scheduler.
+    void attachRTOSScheduler(rtos::Scheduler* scheduler) noexcept;
+
+    /// Returns attached RTOS Task Scheduler pointer or nullptr.
+    [[nodiscard]] rtos::Scheduler* rtosScheduler() const noexcept;
+
     /// Starts CPU execution and initializes active firmware via FirmwareManager.
     void start();
 
     /// Halts CPU execution and shuts down active firmware via FirmwareManager.
     void stop();
 
-    /// Resets the CPU cycle counter, register file, and FirmwareManager state.
+    /// Resets the CPU cycle counter, register file, FirmwareManager, and SystemBus state.
     void reset();
 
-    /// Executes exactly one simulation step (FirmwareManager update, SystemBus timer/DMA update, SystemBus interrupt dispatch).
-    /// Execution is halted while power state is OFF or SLEEP.
+    /// Executes exactly one simulation step.
     void step();
 
     /// Executes N simulation cycles while CPU remains in running state and power is ON.
     void run(common::QWord cycles);
 
-    /// Helper loading firmware into FirmwareManager under a given name (defaults to "default").
+    /// Helper loading firmware into FirmwareManager under a given name.
     bool loadFirmware(std::shared_ptr<firmware::Firmware> firmware, const std::string& name = "default");
 
     /// Helper unloading/shutting down current active firmware.
@@ -98,27 +104,28 @@ public:
     /// Returns pointer to active interrupt controller on the SystemBus.
     [[nodiscard]] kernel::InterruptController* interruptController() const noexcept;
 
-    /// Accesses the CPU RegisterFile state (read-only).
+    /// Returns reference to CPU Register File (read-only).
     [[nodiscard]] const registers::RegisterFile& registerFile() const noexcept;
 
-    /// Accesses the CPU RegisterFile state (mutable).
+    /// Returns reference to CPU Register File (mutable).
     [[nodiscard]] registers::RegisterFile& registerFile() noexcept;
 
-    /// Returns total simulation cycle count since last reset.
+    /// Returns total simulation cycles executed by CPU.
     [[nodiscard]] common::QWord cycleCount() const noexcept;
 
-    /// Returns true if CPU is currently running.
-    [[nodiscard]] bool running() const noexcept;
-
 private:
-    common::QWord m_cycleCount{0};
-    bool m_running{false};
-    registers::RegisterFile m_registerFile;
-    firmware::FirmwareManager m_firmwareManager;
+    system::SystemBus* m_systemBus{nullptr};
+    std::unique_ptr<system::SystemBus> m_ownedSystemBus;
+
     system::power::PowerController m_ownedPowerController;
     system::power::PowerController* m_powerController{&m_ownedPowerController};
-    system::SystemBus* m_systemBus{nullptr};
-    std::unique_ptr<system::SystemBus> m_ownedSystemBus{nullptr};
+
+    firmware::FirmwareManager m_firmwareManager;
+    rtos::Scheduler* m_rtosScheduler{nullptr};
+    registers::RegisterFile m_registerFile;
+
+    bool m_running{false};
+    common::QWord m_cycleCount{0};
 };
 
 } // namespace efs::cpu

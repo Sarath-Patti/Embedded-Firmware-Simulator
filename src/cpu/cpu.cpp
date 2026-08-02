@@ -54,10 +54,21 @@ system::SystemBus* CPU::systemBus() const noexcept {
     return m_systemBus;
 }
 
+void CPU::attachRTOSScheduler(rtos::Scheduler* scheduler) noexcept {
+    m_rtosScheduler = scheduler;
+}
+
+rtos::Scheduler* CPU::rtosScheduler() const noexcept {
+    return m_rtosScheduler;
+}
+
 void CPU::start() {
     if (!m_running) {
         m_running = true;
         m_firmwareManager.initialize();
+        if (m_rtosScheduler != nullptr) {
+            m_rtosScheduler->start();
+        }
     }
 }
 
@@ -65,6 +76,9 @@ void CPU::stop() {
     if (m_running) {
         m_running = false;
         m_firmwareManager.shutdown();
+        if (m_rtosScheduler != nullptr) {
+            m_rtosScheduler->stop();
+        }
     }
 }
 
@@ -72,6 +86,9 @@ void CPU::reset() {
     m_cycleCount = 0;
     m_registerFile.reset();
     m_firmwareManager.reset();
+    if (m_rtosScheduler != nullptr) {
+        m_rtosScheduler->reset();
+    }
     if (m_systemBus != nullptr) {
         m_systemBus->reset();
     }
@@ -83,6 +100,10 @@ const registers::RegisterFile& CPU::registerFile() const noexcept {
 
 registers::RegisterFile& CPU::registerFile() noexcept {
     return m_registerFile;
+}
+
+common::QWord CPU::cycleCount() const noexcept {
+    return m_cycleCount;
 }
 
 void CPU::step() {
@@ -101,7 +122,10 @@ void CPU::step() {
         }
     }
 
-    if (m_running) {
+    if (m_rtosScheduler != nullptr && m_rtosScheduler->running()) {
+        m_rtosScheduler->tick();
+        m_rtosScheduler->schedule();
+    } else if (m_running) {
         m_firmwareManager.update();
     }
 }
@@ -151,35 +175,23 @@ std::shared_ptr<firmware::Firmware> CPU::firmware() const noexcept {
 }
 
 bool CPU::attachDMA(drivers::dma::DMAController* dma) {
-    if (m_systemBus == nullptr) {
-        return false;
-    }
-    return m_systemBus->attachDMA(dma);
+    return m_systemBus != nullptr && m_systemBus->attachDMA(dma);
 }
 
 bool CPU::detachDMA(drivers::dma::DMAController* dma) {
-    if (m_systemBus == nullptr) {
-        return false;
-    }
-    return m_systemBus->detachDMA(dma);
+    return m_systemBus != nullptr && m_systemBus->detachDMA(dma);
 }
 
 drivers::dma::DMAController* CPU::dmaController() const noexcept {
-    return m_systemBus ? m_systemBus->dma() : nullptr;
+    return m_systemBus != nullptr ? m_systemBus->dma() : nullptr;
 }
 
 bool CPU::attachTimer(drivers::timer::Timer* timer) {
-    if (m_systemBus == nullptr) {
-        return false;
-    }
-    return m_systemBus->attachTimer(timer);
+    return m_systemBus != nullptr && m_systemBus->attachTimer(timer);
 }
 
 bool CPU::detachTimer(drivers::timer::Timer* timer) {
-    if (m_systemBus == nullptr) {
-        return false;
-    }
-    return m_systemBus->detachTimer(timer);
+    return m_systemBus != nullptr && m_systemBus->detachTimer(timer);
 }
 
 void CPU::setInterruptController(kernel::InterruptController* controller) {
@@ -189,15 +201,7 @@ void CPU::setInterruptController(kernel::InterruptController* controller) {
 }
 
 kernel::InterruptController* CPU::interruptController() const noexcept {
-    return m_systemBus ? m_systemBus->interrupts() : nullptr;
-}
-
-common::QWord CPU::cycleCount() const noexcept {
-    return m_cycleCount;
-}
-
-bool CPU::running() const noexcept {
-    return m_running;
+    return m_systemBus != nullptr ? m_systemBus->interrupts() : nullptr;
 }
 
 } // namespace efs::cpu

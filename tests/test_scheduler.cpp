@@ -9,6 +9,7 @@
 #include <cassert>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -29,18 +30,30 @@ void test_event_scheduling_and_execution() {
         executed = true;
     }, 10, "Test Event");
 
+    if (id == 0) {
+        throw std::runtime_error("Event schedule failed");
+    }
     assert(id > 0);
-    (void)id;
     assert(scheduler.pendingCount() == 1);
 
     // At cycle 5, not ready
-    assert(scheduler.executeReadyEvents(5) == 0);
+    std::size_t count5 = scheduler.executeReadyEvents(5);
+    if (count5 != 0) {
+        throw std::runtime_error("No event should execute at cycle 5");
+    }
+    assert(count5 == 0);
     assert(!executed);
 
     // At cycle 10, ready
-    assert(scheduler.executeReadyEvents(10) == 1);
+    std::size_t count10 = scheduler.executeReadyEvents(10);
+    if (count10 != 1) {
+        throw std::runtime_error("One event should execute at cycle 10");
+    }
+    assert(count10 == 1);
+    if (!executed) {
+        throw std::runtime_error("Event was not executed");
+    }
     assert(executed);
-    (void)executed;
     assert(scheduler.pendingCount() == 0);
 
     std::cout << "[PASS] test_event_scheduling_and_execution\n";
@@ -56,7 +69,11 @@ void test_fifo_ordering_and_simultaneous_events() {
 
     assert(scheduler.pendingCount() == 3);
 
-    scheduler.executeReadyEvents(10);
+    std::size_t count = scheduler.executeReadyEvents(10);
+    if (count != 3) {
+        throw std::runtime_error("3 events should execute");
+    }
+    assert(count == 3);
 
     assert(order.size() == 3);
     assert(order[0] == 3); // Cycle 5 executed first
@@ -72,17 +89,27 @@ void test_cancellation_and_clearing() {
 
     EventId id1 = scheduler.schedule([&fired]() { fired = true; }, 10, "Event 1");
     EventId id2 = scheduler.schedule([]() {}, 20, "Event 2");
-    (void)id2;
+    if (id1 == 0 || id2 == 0) {
+        throw std::runtime_error("Event scheduling failed");
+    }
 
     assert(scheduler.pendingCount() == 2);
     bool cancelled = scheduler.cancel(id1);
+    if (!cancelled) {
+        throw std::runtime_error("Event cancellation failed");
+    }
     assert(cancelled);
-    (void)cancelled;
     assert(scheduler.pendingCount() == 1);
 
-    scheduler.executeReadyEvents(10);
+    std::size_t count = scheduler.executeReadyEvents(10);
+    if (count != 0) {
+        throw std::runtime_error("No ready event should execute");
+    }
+    assert(count == 0);
+    if (fired) {
+        throw std::runtime_error("Cancelled event fired unexpectedly");
+    }
     assert(!fired);
-    (void)fired;
 
     scheduler.clear();
     assert(scheduler.pendingCount() == 0);
@@ -128,8 +155,10 @@ void test_monitor_events_output() {
     std::ostringstream ss;
 
     bool exec_ok = monitor.executeCommand("events", ss);
+    if (!exec_ok) {
+        throw std::runtime_error("Monitor events command failed");
+    }
     assert(exec_ok);
-    (void)exec_ok;
     std::string out = ss.str();
 
     assert(out.find("Pending Events") != std::string::npos);

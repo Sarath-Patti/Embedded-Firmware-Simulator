@@ -2,7 +2,7 @@
 
 [![CI Status](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml)
 
-A high-performance, modular **C++20 Embedded Firmware Simulator** designed for bare-metal firmware development, hardware abstraction layer (HAL) validation, hardware peripheral simulation, deterministic timing analysis, low-power state management, Direct Memory Access (DMA) transfers, Serial Peripheral Interface (SPI) communication, Inter-Integrated Circuit (I²C) master communication, Pulse Width Modulation (PWM) signal generation, Analog-to-Digital Converter (ADC) multi-channel sampling, and real-time interactive debugging without physical hardware.
+A high-performance, modular **C++20 Embedded Firmware Simulator** designed for bare-metal firmware development, real-time operating system (RTOS) task scheduling, hardware abstraction layer (HAL) validation, hardware peripheral simulation, deterministic timing analysis, low-power state management, Direct Memory Access (DMA) transfers, Serial Peripheral Interface (SPI) communication, Inter-Integrated Circuit (I²C) master communication, Pulse Width Modulation (PWM) signal generation, Analog-to-Digital Converter (ADC) multi-channel sampling, and real-time interactive debugging without physical hardware.
 
 ---
 
@@ -10,12 +10,14 @@ A high-performance, modular **C++20 Embedded Firmware Simulator** designed for b
 
 Developing and testing embedded firmware on physical hardware is often constrained by limited debugging visibility, slow flashing cycles, complex hardware availability, and non-deterministic timing environments.
 
-The **Embedded Firmware Simulator** solves these challenges by providing a modular, C++20 simulated system architecture. Hardware peripherals expose standardized MMIO registers, the kernel dispatches priority interrupts, a Direct Memory Access (DMA) controller streams data between memory and peripherals, SPI, I²C, PWM, and ADC controllers manage peripheral communication and signal sampling, the CPU coordinates cycle simulation steps, a cycle-driven Event Scheduler handles asynchronous peripheral events, a Hardware Abstraction Layer (HAL) isolates firmware from hardware details, a central FirmwareManager manages firmware application lifecycles, a Power Management & Reset Controller subsystem models system power states and reset behaviors, and an interactive monitor CLI gives developers complete visibility into system state in real time.
+The **Embedded Firmware Simulator** solves these challenges by providing a modular, C++20 simulated system architecture. Hardware peripherals expose standardized MMIO registers, the kernel dispatches priority interrupts, a Direct Memory Access (DMA) controller streams data between memory and peripherals, SPI, I²C, PWM, and ADC controllers manage peripheral communication and signal sampling, a simulated Real-Time Operating System (RTOS) Task Scheduler coordinates multi-task execution lifecycles, the CPU coordinates cycle simulation steps, a cycle-driven Event Scheduler handles asynchronous peripheral events, a Hardware Abstraction Layer (HAL) isolates firmware from hardware details, a central FirmwareManager manages firmware application lifecycles, a Power Management & Reset Controller subsystem models system power states and reset behaviors, and an interactive monitor CLI gives developers complete visibility into system state in real time.
 
 ---
 
-## Key Features (v2.3.0)
+## Key Features (v2.4.0)
 
+- **Simulated RTOS Task Scheduler (`efs::rtos::Scheduler`)**: Preemptive priority-based multi-task scheduler supporting round-robin scheduling among equal priorities, tick delay queues, suspended task management, and an automatic Idle Task.
+- **Task Control Block (`efs::rtos::TaskControlBlock`, `efs::rtos::Task`)**: Standardized task lifecycle model tracking task state (`READY`, `RUNNING`, `BLOCKED`, `SUSPENDED`, `TERMINATED`), priority levels (0–255), stack allocation, and execution metrics.
 - **Analog-to-Digital Converter (ADC) Controller (`efs::drivers::adc::ADCController`)**: Multi-channel ADC peripheral supporting configurable resolution (8-bit, 10-bit, 12-bit), reference voltage ($V_{\text{ref}}$), input voltage sampling with saturation handling, and MMIO register integration.
 - **ADC Hardware Abstraction Layer (`efs::hal::ADCHAL`)**: Clean firmware HAL abstraction isolating firmware applications from raw ADC MMIO registers via `read()`, `enable()`, `disable()`, and `setReferenceVoltage()`.
 - **Pulse Width Modulation (PWM) Controller (`efs::drivers::pwm::PWMController`)**: Signal generator driven internally by `efs::drivers::timer::Timer`, supporting configurable signal frequency (Hz), duty cycle percentage (0–100%), output pin state evaluation, and MMIO register integration.
@@ -44,7 +46,7 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 - **Hardware Timer Peripheral (`efs::drivers::timer::Timer`)**: Configurable hardware timer modeling Control (CTRL), Counter (COUNT), Compare (COMPARE), and Status (STATUS) registers with match interrupts driven by scheduled events.
 - **UART Peripheral (`efs::drivers::uart::UART`)**: Serial communication peripheral modeling DATA, STATUS, CONTROL, and BAUD registers with internal TX and RX FIFOs.
 - **Interrupt Controller (`efs::kernel::InterruptController`)**: Priority interrupt manager supporting 32 IRQ sources, enabling/disabling, priority dispatching, and ISR registration.
-- **CPU Execution Engine (`efs::cpu::CPU`)**: Cycle-based execution loop connected directly to the System Bus, driving the Simulation Clock, executing ready scheduled events, dispatching pending interrupts, stepping DMA transfers, and running loaded firmware via FirmwareManager.
+- **CPU Execution Engine (`efs::cpu::CPU`)**: Cycle-based execution loop connected directly to the System Bus, driving the Simulation Clock, executing ready scheduled events, dispatching pending interrupts, stepping DMA transfers, running RTOS tasks, and managing active firmware.
 - **CPU Register File (`efs::cpu::registers::RegisterFile`)**: Encapsulates processor state including 16 General Purpose Registers (R0–R15), Program Counter (PC), Stack Pointer (SP), and Status Register (SR).
 - **Interactive Monitor CLI (`efs::monitor::Monitor`)**: Non-destructive command-line debugger allowing real-time step execution, memory dumps, register inspection, peripheral querying, clock timing observation, and pending event inspection.
 
@@ -65,12 +67,12 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
               ┌──────────────┘             └──────────────┐
               ▼                                           ▼
 ┌──────────────────────────┐                    ┌───────────────────┐
-│ PowerController (ON/OFF) │                    │ Firmware Manager  │
+│ PowerController (ON/OFF) │                    │  RTOS Scheduler   │
 └─────────────┬────────────┘                    └─────────┬─────────┘
               │                                           │
               ▼                                           ▼
 ┌──────────────────────────┐                   ┌────────────────────┐
-│     ResetController      │                   │ Firmware App (HAL) │
+│     ResetController      │                   │   Firmware Tasks   │
 └─────────────┬────────────┘                   └──────────┬─────────┘
               │                                           │
               └─────────────────────┬─────────────────────┘
@@ -94,45 +96,62 @@ The **Embedded Firmware Simulator** solves these challenges by providing a modul
 
 ---
 
-## ADC Architecture & Analog Sampling
+## RTOS Task Scheduler Architecture
 
-The Analog-to-Digital Converter (`efs::drivers::adc::ADCController`) samples analog voltages across multiple input channels and converts them into digital raw values based on resolution and reference voltage.
+The RTOS Task Scheduler (`efs::rtos::Scheduler`) provides lightweight simulated multi-tasking without operating system host threads.
 
-### Register Layout
+### Task Lifecycle & States
 
-| Offset | Register Name | Description |
-|---|---|---|
-| `0x00` | CTRL | Control bits: Enable (bit 0) |
-| `0x04` | STATUS | Status bits: Enable (bit 0), Conversion Complete (bit 1) |
-| `0x08` | RES | Resolution bits (8, 10, or 12) |
-| `0x0C` | DATA | Last digitized raw conversion value |
+```text
+  [createTask] ───►  READY  ◄─────── [delay expired / resumeTask]
+                       │  ▲
+           [schedule]  │  │ [yield / round-robin]
+                       ▼  │
+                    RUNNING
+                     │   │
+     [delay(ticks)]  │   └──► [suspendTask] ──► SUSPENDED
+                     ▼                              │
+                  BLOCKED ──────────────────────────┘
+```
 
-### Digitization Formula & Saturation
+- **`READY`**: Eligible for execution in the ready queue.
+- **`RUNNING`**: Currently executing task slice.
+- **`BLOCKED`**: Suspended in the delay queue awaiting a target tick count (`delay(ticks)`).
+- **`SUSPENDED`**: Manually paused task (`suspendTask()`).
+- **`TERMINATED`**: Deleted or completed task.
 
-Given resolution $B$ bits (e.g. 12-bit, $D_{\text{max}} = 2^{12} - 1 = 4095$), reference voltage $V_{\text{ref}}$ (e.g. 3.3 V), and analog input voltage $V_{\text{in}}$:
+### Scheduling Policy
 
-$$\text{Digital Value} = \begin{cases} 0 & \text{if } V_{\text{in}} \le 0.0 \\ D_{\text{max}} & \text{if } V_{\text{in}} \ge V_{\text{ref}} \text{ (Saturation)} \\ \text{round}\left( \frac{V_{\text{in}}}{V_{\text{ref}}} \times D_{\text{max}} \right) & \text{otherwise} \end{cases}$$
+1. **Strict Priority Preemption**: Highest numeric priority (255 down to 1) READY task is always selected.
+2. **Equal-Priority Round-Robin**: Tasks sharing the same priority level take turns in FIFO sequence.
+3. **Idle Task**: Priority 0 task automatically executed when no user tasks are ready.
 
 ### Example Usage
 
 ```cpp
-efs::mmio::MMIOBus mmioBus;
-efs::system::SystemBus systemBus(nullptr, &mmioBus, nullptr);
+efs::system::SystemBus systemBus;
+efs::cpu::CPU cpu(&systemBus);
+efs::rtos::Scheduler rtos(&systemBus);
 
-// Instantiate ADC controller (12-bit resolution, 3.3V reference voltage, 4 channels)
-efs::drivers::adc::ADCController adc(mmioBus, 0x40007000, 12, 3.3, 4);
-systemBus.attachADC(&adc);
+cpu.attachRTOSScheduler(&rtos);
 
-// Access via ADC HAL
-efs::hal::ADCHAL adcHAL(&adc);
-adcHAL.enable();
+// Create Sensor Sampling Task (High Priority 10)
+rtos.createTask("SensorTask", [&rtos]() {
+    // Perform sensor read...
+    rtos.delay(5); // Block for 5 simulation ticks
+}, 10);
 
-// Set analog input voltage on channel 0 (e.g. 1.65 V potentiometer)
-adc.setAnalogInput(0, 1.65);
+// Create Heartbeat LED Task (Medium Priority 5)
+rtos.createTask("HeartbeatTask", []() {
+    // Toggle LED pin...
+}, 5);
 
-// Sample via HAL -> returns 2048 (half of 4095)
-std::uint32_t rawValue = adcHAL.read(0);
-assert(rawValue == 2048);
+// Start CPU execution -> runs RTOS Task Scheduler
+cpu.start();
+for (int i = 0; i < 20; ++i) {
+    cpu.step();
+}
+cpu.stop();
 ```
 
 ---
