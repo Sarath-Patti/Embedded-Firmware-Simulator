@@ -4,6 +4,7 @@
 #include "drivers/dma/dma_controller.hpp"
 #include "drivers/gpio/gpio.hpp"
 #include "drivers/i2c/i2c_controller.hpp"
+#include "drivers/pwm/pwm_controller.hpp"
 #include "drivers/spi/spi_controller.hpp"
 #include "drivers/timer/timer.hpp"
 #include "drivers/uart/uart.hpp"
@@ -80,7 +81,7 @@ public:
     /// Returns all attached timers.
     [[nodiscard]] const std::vector<drivers::timer::Timer*>& timers() const noexcept;
 
-    /// Advances the Simulation Clock and ticks all attached DMA controllers and hardware timers.
+    /// Advances the Simulation Clock and ticks all attached DMA controllers, timers, and PWM controllers.
     void tickTimers();
 
     /// Attaches GPIO peripheral.
@@ -107,7 +108,13 @@ public:
     /// Returns attached I2C peripheral pointer.
     [[nodiscard]] drivers::i2c::I2CController* i2c() const noexcept;
 
-    /// Resets all attached peripherals (DMA, GPIO, Timers, UART, SPI, I2C, Interrupt Controller, Memory, Clock).
+    /// Attaches PWM peripheral.
+    void attachPWM(drivers::pwm::PWMController* pwm) noexcept;
+
+    /// Returns attached PWM peripheral pointer.
+    [[nodiscard]] drivers::pwm::PWMController* pwm() const noexcept;
+
+    /// Resets all attached peripherals (DMA, GPIO, Timers, UART, SPI, I2C, PWM, Interrupt Controller, Memory, Clock).
     void reset();
 
 private:
@@ -122,6 +129,7 @@ private:
     drivers::uart::UART* m_uart{nullptr};
     drivers::spi::SPIController* m_spi{nullptr};
     drivers::i2c::I2CController* m_i2c{nullptr};
+    drivers::pwm::PWMController* m_pwm{nullptr};
 };
 
 } // namespace efs::system

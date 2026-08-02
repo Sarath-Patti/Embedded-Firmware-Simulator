@@ -174,6 +174,9 @@ void SystemBus::tickTimers() {
             timer->tick();
         }
     }
+    if (m_pwm != nullptr) {
+        m_pwm->tick();
+    }
 }
 
 void SystemBus::attachGPIO(drivers::gpio::GPIO* gpio) noexcept {
@@ -213,6 +216,14 @@ drivers::i2c::I2CController* SystemBus::i2c() const noexcept {
     return m_i2c;
 }
 
+void SystemBus::attachPWM(drivers::pwm::PWMController* pwm) noexcept {
+    m_pwm = pwm;
+}
+
+drivers::pwm::PWMController* SystemBus::pwm() const noexcept {
+    return m_pwm;
+}
+
 void SystemBus::reset() {
     for (auto* dma : m_dmas) {
         if (dma != nullptr) {
@@ -235,6 +246,9 @@ void SystemBus::reset() {
     }
     if (m_i2c != nullptr) {
         m_i2c->reset();
+    }
+    if (m_pwm != nullptr) {
+        m_pwm->reset();
     }
     if (m_interruptController != nullptr) {
         m_interruptController->reset();
