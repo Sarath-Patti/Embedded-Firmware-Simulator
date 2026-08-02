@@ -120,6 +120,9 @@ bool PWMController::outputState() const noexcept {
 
 void PWMController::tick() {
     if (enabled()) {
+        if (!m_timer.running()) {
+            m_timer.start();
+        }
         m_timer.tick();
     }
     updateStatusRegister();
