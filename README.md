@@ -1,6 +1,6 @@
 # Embedded Firmware Simulator (EFS)
 
-![CI Status](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/cmake.yml/badge.svg)
+[![CI Status](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Sarath-Patti/Embedded-Firmware-Simulator/actions/workflows/ci.yml)
 ![C++ Standard](https://img.shields.io/badge/C%2B%2B-17-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
