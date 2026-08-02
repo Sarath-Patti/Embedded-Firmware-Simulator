@@ -24,13 +24,13 @@ void test_pin_configuration() {
 
     constexpr std::uint8_t PIN0 = 0;
 
-    assert(gpio.direction(PIN0) == PinDirection::Input);
+    assert((bus.read(gpio.dirAddress()) & (1U << PIN0)) == 0);
 
     gpio.configurePin(PIN0, PinDirection::Output);
-    assert(gpio.direction(PIN0) == PinDirection::Output);
+    assert((bus.read(gpio.dirAddress()) & (1U << PIN0)) != 0);
 
     gpio.configurePin(PIN0, PinDirection::Input);
-    assert(gpio.direction(PIN0) == PinDirection::Input);
+    assert((bus.read(gpio.dirAddress()) & (1U << PIN0)) == 0);
 
     std::cout << "[PASS] test_pin_configuration\n";
 }

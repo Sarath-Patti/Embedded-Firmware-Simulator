@@ -18,9 +18,8 @@ void test_spi_initialization() {
 
     assert(bus.contains(spi.controlAddress()));
     assert(bus.contains(spi.statusAddress()));
-    assert(bus.contains(spi.configAddress()));
-    assert(bus.contains(spi.txDataAddress()));
-    assert(bus.contains(spi.rxDataAddress()));
+    assert(bus.contains(spi.dataAddress()));
+    assert(bus.contains(spi.clockDivAddress()));
 
     assert(!spi.enabled());
     assert(spi.clockDivider() == 4);

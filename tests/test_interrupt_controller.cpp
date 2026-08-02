@@ -93,13 +93,16 @@ void test_pending_status() {
 
     constexpr std::uint8_t IRQ5 = 5;
     ic.registerInterrupt(IRQ5);
-    assert(!ic.hasPendingInterrupts());
+    assert(!ic.pending(IRQ5));
+    assert((bus.read(ic.pendingAddress()) & (1U << IRQ5)) == 0);
 
     ic.trigger(IRQ5);
-    assert(ic.hasPendingInterrupts());
+    assert(ic.pending(IRQ5));
+    assert((bus.read(ic.pendingAddress()) & (1U << IRQ5)) != 0);
 
     ic.clear(IRQ5);
-    assert(!ic.hasPendingInterrupts());
+    assert(!ic.pending(IRQ5));
+    assert((bus.read(ic.pendingAddress()) & (1U << IRQ5)) == 0);
 
     std::cout << "[PASS] test_pending_status\n";
 }

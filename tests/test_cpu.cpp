@@ -17,7 +17,7 @@ using namespace efs::system;
 
 void test_cpu_initialization() {
     CPU cpu;
-    assert(!cpu.running());
+    assert(!cpu.powerController().isPoweredOn());
     assert(cpu.cycleCount() == 0);
     assert(cpu.interruptController() == nullptr);
     assert(cpu.systemBus() == nullptr);
@@ -40,13 +40,13 @@ void test_cpu_bus_binding() {
 
 void test_cpu_start_stop() {
     CPU cpu;
-    assert(!cpu.running());
+    assert(!cpu.powerController().isPoweredOn());
 
     cpu.start();
-    assert(cpu.running());
+    assert(cpu.powerController().isPoweredOn());
 
     cpu.stop();
-    assert(!cpu.running());
+    assert(!cpu.powerController().isPoweredOn());
 
     std::cout << "[PASS] test_cpu_start_stop\n";
 }
