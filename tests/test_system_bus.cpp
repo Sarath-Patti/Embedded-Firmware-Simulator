@@ -28,7 +28,7 @@ void test_bus_construction() {
 
     assert(bus.memory() == &mem);
     assert(bus.mmio() == &mmioBus);
-    assert(bus.interruptController() == &ic);
+    assert(bus.interrupts() == &ic);
     assert(bus.gpio() == nullptr);
     assert(bus.uart() == nullptr);
     assert(bus.timers().empty());
@@ -44,7 +44,7 @@ void test_subsystem_access() {
 
     assert(bus.memory() == nullptr);
     assert(bus.mmio() == nullptr);
-    assert(bus.interruptController() == nullptr);
+    assert(bus.interrupts() == nullptr);
 
     bus.setMemory(&mem);
     bus.setMMIO(&mmioBus);
@@ -52,7 +52,7 @@ void test_subsystem_access() {
 
     assert(bus.memory() == &mem);
     assert(bus.mmio() == &mmioBus);
-    assert(bus.interruptController() == &ic);
+    assert(bus.interrupts() == &ic);
 
     std::cout << "[PASS] test_subsystem_access\n";
 }

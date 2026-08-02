@@ -25,14 +25,14 @@ void test_register_read_write() {
 
 void test_register_registration() {
     efs::mmio::MMIOBus bus;
-    assert(bus.size() == 0);
+    assert(bus.registeredAddresses().size() == 0);
 
     bool reg = bus.registerRegister(0x40000000, 0x10);
     if (!reg) {
         throw std::runtime_error("Register registration failed");
     }
     assert(reg);
-    assert(bus.size() == 1);
+    assert(bus.registeredAddresses().size() == 1);
     assert(bus.contains(0x40000000));
 
     std::cout << "[PASS] test_register_registration\n";

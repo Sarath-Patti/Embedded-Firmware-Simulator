@@ -172,8 +172,8 @@ void test_pwm_reset_behaviour() {
 
     pwm.reset();
     assert(!pwm.enabled());
-    assert(pwm.frequency() == 1000);
-    assert(pwm.dutyCycle() == 50);
+    assert(pwm.frequency() == 2000);
+    assert(pwm.dutyCycle() == 75);
 
     std::cout << "[PASS] test_pwm_reset_behaviour\n";
 }

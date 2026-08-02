@@ -128,6 +128,9 @@ void test_i2c_nack_on_unattached_address() {
         throw std::runtime_error("Start on unattached address should return false");
     }
     assert(!start_ok);
+    assert(i2c.busy());
+
+    i2c.stop();
     assert(!i2c.busy());
 
     std::cout << "[PASS] test_i2c_nack_on_unattached_address\n";

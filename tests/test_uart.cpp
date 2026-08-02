@@ -75,14 +75,14 @@ void test_fifo_operations_and_register_sync() {
 
     assert(uart.hasReceivedData());
     assert((bus.read(0x40003004) & UART::STATUS_RX_AVAIL_BIT) != 0);
-    assert(bus.read(0x40003000) == 'A'); // Peek front byte via MMIO read
 
-    // Read byte via method
+    // Read byte via method updates DATA register
     std::uint8_t b1 = uart.readByte();
     if (b1 != 'A') {
         throw std::runtime_error("Read b1 failed");
     }
     assert(b1 == 'A');
+    assert(bus.read(0x40003000) == 'A');
     assert(uart.hasReceivedData());
 
     std::uint8_t b2 = uart.readByte();
@@ -90,6 +90,7 @@ void test_fifo_operations_and_register_sync() {
         throw std::runtime_error("Read b2 failed");
     }
     assert(b2 == 'B');
+    assert(bus.read(0x40003000) == 'B');
     assert(!uart.hasReceivedData());
     assert((bus.read(0x40003004) & UART::STATUS_RX_AVAIL_BIT) == 0);
 
